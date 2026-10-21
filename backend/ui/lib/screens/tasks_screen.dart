@@ -250,7 +250,7 @@ class _TasksScreenState extends State<TasksScreen> {
         children: [
           for (final e in TaskItem.statusLabels.entries)
             SimpleDialogOption(onPressed: () => Navigator.pop(ctx, e.key), child: Text(e.value)),
-          const SimpleDialogOption(value: '', title: Text('Все')),
+          SimpleDialogOption(onPressed: () => Navigator.pop(ctx, ''), child: const Text('Все')),
         ],
       ),
     );
@@ -268,7 +268,7 @@ class _TasksScreenState extends State<TasksScreen> {
         children: [
           for (final e in TaskItem.priorityLabels.entries)
             SimpleDialogOption(onPressed: () => Navigator.pop(ctx, e.key), child: Text(e.value)),
-          const SimpleDialogOption(value: '', title: Text('Любой')),
+          SimpleDialogOption(onPressed: () => Navigator.pop(ctx, ''), child: const Text('Любой')),
         ],
       ),
     );

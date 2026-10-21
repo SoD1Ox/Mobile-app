@@ -4,7 +4,6 @@ library;
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
-import '../models/models.dart';
 import '../widgets/common.dart';
 import 'clients_screen.dart';
 import 'projects_screen.dart';

@@ -72,8 +72,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final yes = await confirmDialog(context, 'Удалить проект?',
         '«${p.name}» и все его задачи будут удалены.');
     if (!yes) return;
-    final ok = await runGuarded(
-        context, () => AppScope.of(context).api.delete('/projects/${p.id}'));
+        if (!mounted) return;
+    // ignore: use_build_context_synchronously
+    final api = AppScope.of(context).api;
+    final ok = await runGuarded(context, () => api.delete('/projects/${p.id}'));
     if (ok) _load(page: 1);
   }
 
@@ -215,10 +217,16 @@ class _ProjectFormScreenState extends State<_ProjectFormScreen> {
       TextEditingController(text: widget.existing?.description ?? '');
   late final _budget =
       TextEditingController(text: '${widget.existing?.budget ?? 0}');
-  int? _clientId = widget.existing?.clientId;
+  int? _clientId;
   bool _saving = false;
 
   bool get _isEdit => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _clientId = widget.existing?.clientId;
+  }
 
   @override
   void dispose() {

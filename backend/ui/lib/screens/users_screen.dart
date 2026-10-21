@@ -58,8 +58,10 @@ class _UsersScreenState extends State<UsersScreen> {
         'Удалить пользователя?',
         '«${u['username']}» (${_roleLabels[u['role']] ?? u['role']}) будет удалён навсегда.');
     if (!yes) return;
-    final ok = await runGuarded(
-        context, () => AppScope.of(context).api.delete('/users/${u['id']}'));
+        if (!mounted) return;
+    // ignore: use_build_context_synchronously
+    final api = AppScope.of(context).api;
+    final ok = await runGuarded(context, () => api.delete('/users/${u['id']}'));
     if (ok) _load();
   }
 

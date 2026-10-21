@@ -3,7 +3,6 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../api/api_client.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
@@ -88,8 +87,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final yes = await confirmDialog(
         context, 'Удалить комментарий?', 'Действие необратимо.');
     if (!yes) return;
+        if (!mounted) return;
+    // ignore: use_build_context_synchronously
+    final api = AppScope.of(context).api;
     final ok = await runGuarded(context, () async {
-      await AppScope.of(context).api.delete('/tasks/comments/${c.id}');
+      await api.delete('/tasks/comments/${c.id}');
     });
     if (ok) _load();
   }
@@ -106,8 +108,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final yes = await confirmDialog(
         context, 'Удалить задачу?', '«${_task!.title}» будет удалена навсегда.');
     if (!yes) return;
+        if (!mounted) return;
+    // ignore: use_build_context_synchronously
+    final api = AppScope.of(context).api;
     final ok = await runGuarded(context, () async {
-      await AppScope.of(context).api.delete('/tasks/${widget.taskId}');
+      await api.delete('/tasks/${widget.taskId}');
     });
     if (ok && mounted) Navigator.pop(context, true);
   }
@@ -163,7 +168,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             Text(t.description!),
             const SizedBox(height: 8),
           ],
-          Text('Автор: #$authorId · Проект: #$projectId',
+          Text('Автор: #${t.authorId} · Проект: #${t.projectId}',
               style: TextStyle(color: Colors.grey.shade600)),
           Text('Создана: ${_fmt(t.createdAt)}   Обновлена: ${_fmt(t.updatedAt)}',
               style: TextStyle(color: Colors.grey.shade600)),
@@ -186,7 +191,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          Divider(),
+          const Divider(),
           Text('Комментарии (${_comments.length})',
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),

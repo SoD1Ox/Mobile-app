@@ -99,6 +99,41 @@ class ApiClient {
     throw ApiException(res.statusCode, _extractError(res));
   }
 
+  /// Sends a request; on 401 silently refreshes the access token once
+  /// (using the stored refresh token) and replays the original request.
+  Future<dynamic> _request(String method, Uri url,
+      [String? body]) async {
+    Future<http.Response> send() async {
+      final req = http.Request(method, url)
+        ..headers.addAll(_headers);
+      if (body != null) req.body = body;
+      return http.Response.fromStream(await req.send());
+    }
+
+    var res = await send();
+    if (res.statusCode == 401 && _refreshToken != null) {
+      if (await _tryRefresh()) res = await send();
+    }
+    return _handle(res);
+  }
+
+  Future<bool> _tryRefresh() async {
+    try {
+      final res = await http.post(_u('/auth/refresh'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'refresh_token': _refreshToken}));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes));
+        await _saveTokens(data['access_token'],
+            data['refresh_token'] ?? _refreshToken!);
+        return true;
+      }
+    } catch (_) {
+      // ignore – caller will surface the original 401
+    }
+    return false;
+  }
+
   // ------------------------------------------------------------- auth
   Future<void> register({
     required String username,
@@ -132,21 +167,20 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> me() async =>
-      (await _handle(await http.get(_u('/auth/me'), headers: _headers)))
-          as Map<String, dynamic>;
+      (await _request('GET', _u('/auth/me'))) as Map<String, dynamic>;
 
   // ------------------------------------------------------------- generic CRUD
   Future<dynamic> get(String path, [Map<String, dynamic>? query]) async =>
-      _handle(await http.get(_u(path, query), headers: _headers));
+      _request('GET', _u(path, query));
 
   Future<dynamic> post(String path, Map<String, dynamic> body) async =>
-      _handle(
-          await http.post(_u(path), headers: _headers, body: jsonEncode(body)));
+      _request('POST', _u(path), jsonEncode(body));
 
   Future<dynamic> put(String path, Map<String, dynamic> body) async =>
-      _handle(
-          await http.put(_u(path), headers: _headers, body: jsonEncode(body)));
+      _request('PUT', _u(path), jsonEncode(body));
 
-  Future<dynamic> delete(String path) async =>
-      _handle(await http.delete(_u(path), headers: _headers));
+  Future<dynamic> patch(String path, Map<String, dynamic> body) async =>
+      _request('PATCH', _u(path), jsonEncode(body));
+
+  Future<dynamic> delete(String path) async => _request('DELETE', _u(path));
 }

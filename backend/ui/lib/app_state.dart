@@ -25,8 +25,8 @@ class AppScope extends InheritedWidget {
       context.dependOnInheritedWidgetOfExactType<AppScope>()!;
 
   @override
-  bool updateShouldNotify(AppScope old) =>
-      old.user != user || old.api != api;
+  bool updateShouldNotify(AppScope oldWidget) =>
+      oldWidget.user != user || oldWidget.api != api;
 }
 
 /// Small helper to show readable error snack-bars everywhere.

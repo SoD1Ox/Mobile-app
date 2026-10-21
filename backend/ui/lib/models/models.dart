@@ -153,8 +153,10 @@ class DataPage<T> {
   final int pageSize;
   final int pages;
 
-  DataPage.fromJson(Map<String, dynamic> j, T Function(Map<String, dynamic>) parse)
-      : items = ((j['items'] as List?) ?? []).map(parse).toList(),
+  DataPage.fromJson(Map<String, dynamic> j, T Function(Map<String, dynamic> e) parse)
+      : items = ((j['items'] as List?) ?? [])
+            .map((e) => parse(Map<String, dynamic>.from(e as Map)))
+            .toList(),
         total = j['total'] ?? 0,
         page = j['page'] ?? 1,
         pageSize = j['page_size'] ?? 20,

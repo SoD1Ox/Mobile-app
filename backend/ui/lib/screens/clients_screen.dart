@@ -3,7 +3,6 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../api/api_client.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
@@ -63,8 +62,10 @@ class _ClientsScreenState extends State<ClientsScreen> {
     final yes = await confirmDialog(
         context, 'Удалить клиента?', '«${c.name}» будет удалён навсегда.');
     if (!yes) return;
-    final ok = await runGuarded(
-        context, () => AppScope.of(context).api.delete('/clients/${c.id}'));
+        if (!mounted) return;
+    // ignore: use_build_context_synchronously
+    final api = AppScope.of(context).api;
+    final ok = await runGuarded(context, () => api.delete('/clients/${c.id}'));
     if (ok) _load(page: 1);
   }
 
@@ -118,25 +119,28 @@ class _ClientsScreenState extends State<ClientsScreen> {
                                     [c.email, c.phone]
                                         .where((e) => e != null && e.isNotEmpty)
                                         .join(' · ')),
-                                trailing: Wrap(spacing: 4, children: [
-                                  IconButton(
-                                      icon: const Icon(Icons.people_outline),
-                                      tooltip: 'Контактные лица',
-                                      onPressed: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (_) =>
-                                                  ContactsScreen(client: c))),
-                                  if (canManage)
-                                    IconButton(
-                                        icon: const Icon(Icons.edit_outlined),
-                                        onPressed: () => _openForm(existing: c)),
-                                  if (canManage)
-                                    IconButton(
-                                        icon: const Icon(Icons.delete_outline,
-                                            color: Colors.red),
-                                        onPressed: () => _delete(c)),
-                                ]),
+                                trailing: Wrap(
+                                    spacing: 4,
+                                    children: <Widget>[
+                                      IconButton(
+                                        icon: const Icon(Icons.people_outline),
+                                        tooltip: 'Контактные лица',
+                                        onPressed: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (_) =>
+                                                    ContactsScreen(client: c))),
+                                      ),
+                                      if (canManage)
+                                        IconButton(
+                                            icon: const Icon(Icons.edit_outlined),
+                                            onPressed: () => _openForm(existing: c)),
+                                      if (canManage)
+                                        IconButton(
+                                            icon: const Icon(Icons.delete_outline,
+                                                color: Colors.red),
+                                            onPressed: () => _delete(c)),
+                                    ]),
                               ),
                             );
                           },
@@ -216,8 +220,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
     final yes = await confirmDialog(
         context, 'Удалить контакт?', '«${c.fullName}» будет удалён.');
     if (!yes) return;
-    final ok = await runGuarded(
-        context, () => AppScope.of(context).api.delete('/clients/contacts/${c.id}'));
+        if (!mounted) return;
+    // ignore: use_build_context_synchronously
+    final api = AppScope.of(context).api;
+    final ok = await runGuarded(context, () => api.delete('/clients/contacts/${c.id}'));
     if (ok) _load();
   }
 
@@ -228,7 +234,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
       appBar: AppBar(title: Text('Контакты: ${widget.client.name}')),
       floatingActionButton: canManage
           ? FloatingActionButton(
-              onPressed: () => _openForm(), icon: const Icon(Icons.person_add))
+              onPressed: () => _openForm(), child: const Icon(Icons.person_add))
           : null,
       body: _loading
           ? const LoadingView()
@@ -305,6 +311,8 @@ class _ClientFormScreenState extends State<_ClientFormScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
+        if (!mounted) return;
+    // ignore: use_build_context_synchronously
     final api = AppScope.of(context).api;
     final ok = await runGuarded(context, () async {
       if (_isEdit) {
