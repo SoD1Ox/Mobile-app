@@ -34,7 +34,7 @@ ThemeData buildGlassTheme() {
   OutlineInputBorder fieldBorder({bool focused = false}) => OutlineInputBorder(
         borderRadius: kGlassRadius,
         borderSide: BorderSide(
-          color: focused ? _accent.withValues(alpha: 0.9) : _glassBorder,
+          color: focused ? _accent.withOpacity(0.9) : _glassBorder,
           width: focused ? 1.4 : 1,
         ),
       );
@@ -59,7 +59,7 @@ ThemeData buildGlassTheme() {
         letterSpacing: 0.2,
       ),
     ),
-    cardTheme: CardThemeData(
+    cardTheme: const CardTheme(
       color: _glassFill,
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -79,8 +79,8 @@ ThemeData buildGlassTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: _glassFill,
-      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
-      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.75)),
+      hintStyle: TextStyle(color: Colors.white.withOpacity(0.45)),
+      labelStyle: TextStyle(color: Colors.white.withOpacity(0.75)),
       floatingLabelStyle: const TextStyle(color: _accent),
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -98,7 +98,7 @@ ThemeData buildGlassTheme() {
     dropdownMenuTheme: DropdownMenuThemeData(
       menuStyle: MenuStyle(
         backgroundColor:
-            WidgetStatePropertyAll(Color(0xF216294E).withValues(alpha: 0.98)),
+            WidgetStatePropertyAll(Color(0xF216294E).withOpacity(0.98)),
         shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: kGlassRadius)),
         side: const WidgetStatePropertyAll(BorderSide(color: _glassBorder)),
@@ -132,13 +132,13 @@ ThemeData buildGlassTheme() {
     ),
     chipTheme: ChipThemeData(
       backgroundColor: _glassFill,
-      selectedColor: _accent.withValues(alpha: 0.35),
+      selectedColor: _accent.withOpacity(0.35),
       side: const BorderSide(color: _glassBorder),
       labelStyle: const TextStyle(color: Colors.white, fontSize: 12.5),
       secondaryLabelStyle: const TextStyle(color: Colors.white, fontSize: 12.5),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
-    dialogTheme: DialogThemeData(
+    dialogTheme: DialogTheme(
       backgroundColor: const Color(0xF2182A4D),
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
@@ -148,7 +148,7 @@ ThemeData buildGlassTheme() {
       titleTextStyle: const TextStyle(
           color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700),
       contentTextStyle: TextStyle(
-          color: Colors.white.withValues(alpha: 0.85), fontSize: 14.5),
+          color: Colors.white.withOpacity(0.85), fontSize: 14.5),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
@@ -158,7 +158,7 @@ ThemeData buildGlassTheme() {
     ),
     navigationBarTheme: NavigationBarThemeData(
       height: 66,
-      indicatorColor: _accent.withValues(alpha: 0.28),
+      indicatorColor: _accent.withOpacity(0.28),
       backgroundColor: Colors.transparent,
       elevation: 0,
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -170,14 +170,14 @@ ThemeData buildGlassTheme() {
               : FontWeight.w500,
           color: states.contains(WidgetState.selected)
               ? Colors.white
-              : Colors.white.withValues(alpha: 0.6),
+              : Colors.white.withOpacity(0.6),
         ),
       ),
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
           color: states.contains(WidgetState.selected)
               ? Colors.white
-              : Colors.white.withValues(alpha: 0.6),
+              : Colors.white.withOpacity(0.6),
         ),
       ),
     ),
@@ -257,7 +257,7 @@ class GlassPanel extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.07),
+              color: Colors.white.withOpacity(0.07),
               borderRadius: BorderRadius.circular(22),
               border: Border.all(color: _glassBorder),
             ),

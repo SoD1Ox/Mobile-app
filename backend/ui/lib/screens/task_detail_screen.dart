@@ -174,9 +174,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             const SizedBox(height: 8),
           ],
           Text('Автор: #${t.authorId} · Проект: #${t.projectId}',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.55))),
+              style: TextStyle(color: Colors.white.withOpacity(0.55))),
           Text('Создана: ${_fmt(t.createdAt)}   Обновлена: ${_fmt(t.updatedAt)}',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.55))),
+              style: TextStyle(color: Colors.white.withOpacity(0.55))),
           const SizedBox(height: 16),
           if (user?.canManage ?? false) ...[
             Text('Сменить статус',
@@ -218,7 +218,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text('Комментариев пока нет',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.55))),
+                  style: TextStyle(color: Colors.white.withOpacity(0.55))),
             ),
           const SizedBox(height: 8),
           Row(
