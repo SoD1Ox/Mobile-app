@@ -82,8 +82,8 @@ psql -U postgres -h localhost -p <PORT> -d mobile_app -c "CREATE ROLE app_user L
 - **Готовый дамп** (все таблицы + ~1000 задач): `pg_restore -U postgres -h localhost -p <PORT> -d mobile_app --no-owner db_export\mobile_app.dump`
 - **или миграции + seed** (шаги 2–3 ниже).
 
-Если порт не 5432 — пропишите его в `backend/.env` (`DB_PORT`) и `backend/alembic.ini`
-(`sqlalchemy.url`), а также во всех командах выше.
+Если порт не 5432 — пропишите его только в `backend/.env` (`DB_PORT`): и приложение,
+и Alembic читают URL из `.env` (в `alembic.ini` менять ничего не нужно).
 
 ### 2. Бэкенд (FastAPI)
 
@@ -92,7 +92,7 @@ cd backend
 python -m venv venv
 .\venv\Scripts\Activate.ps1        # если ругается политика: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 pip install -r requirements.txt
-alembic upgrade head               # применить миграции (порт должен совпадать с alembic.ini)
+alembic upgrade head               # применить миграции (порт берётся из .env)
 python -m scripts.seed             # наполнить БД данными (если не восстанавливали дамп)
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
