@@ -2,7 +2,11 @@
 
 Полноценное приложение для управления задачами: REST API на FastAPI, база данных PostgreSQL
 с миграциями Alembic, слоистая архитектура (ORM → репозитории → DTO → сервисы → API) и
-кастомный мобильный интерфейс на Flutter (Material 3, без HTML).
+кастомный интерфейс на Flutter в стиле «жидкое стекло» (Material 3, только кастомные
+векторные иконки и элементы — без стикеров, эмодзи и стандартных Material Icons).
+
+Подробный пошаговый гайд по запуску с учётом вашей конфигурации (Windows, PowerShell,
+порт PostgreSQL 1616): docs/GUIDE.md
 
 ## Архитектура
 
@@ -51,31 +55,35 @@ backend/
 (`?search=&status=&priority=&project_id=&assignee_id=`). В UI — бесконечная прокрутка
 (бесшовная подгрузка следующих страниц).
 
-## Запуск на своём компьютере (Windows / PowerShell)
+## Быстрый старт (кратко)
+
+Полная версия с диагностикой типичных ошибок — в docs/GUIDE.md. Здесь — минимум команд.
 
 ### 1. PostgreSQL + база данных
 
-Установите PostgreSQL (например, 16/18 с официального сайта). Служба запускается так:
+Установите PostgreSQL (16/18 с официального сайта) и запустите службу:
 
 ```powershell
 Get-Service -Name "postgresql*" | Start-Service
-# узнайте фактический порт сервера (по умолчанию 5432):
+# узнайте фактический порт сервера (установка может использовать нестандартный, например 1616):
 Get-NetTCPConnection -State Listen | Where-Object { $_.OwningProcess -in (Get-Process postgres -ErrorAction SilentlyContinue).Id } | Select-Object LocalAddress, LocalPort
 ```
 
-Создайте базу и пользователя `app_user` (пароли — как в `backend/.env`):
+Создайте базу и пользователя `app_user` (пароли — как в `backend/.env`). Ниже `<PORT>` —
+порт из вывода команды выше (5432 или, как в вашей конфигурации, 1616):
 
 ```powershell
 $env:PGCLIENTENCODING='UTF8'   # чтобы кириллица в консоли не ломалась
-psql -U postgres -h localhost -p 5432 -c "CREATE DATABASE mobile_app;"
-psql -U postgres -h localhost -p 5432 -d mobile_app -c "CREATE ROLE app_user LOGIN PASSWORD 'app_pass'; GRANT ALL ON DATABASE mobile_app TO app_user; GRANT ALL ON SCHEMA public TO app_user; ALTER SCHEMA public OWNER TO app_user;"
+psql -U postgres -h localhost -p <PORT> -c "CREATE DATABASE mobile_app;"
+psql -U postgres -h localhost -p <PORT> -d mobile_app -c "CREATE ROLE app_user LOGIN PASSWORD 'app_pass'; GRANT ALL ON DATABASE mobile_app TO app_user; GRANT ALL ON SCHEMA public TO app_user; ALTER SCHEMA public OWNER TO app_user;"
 ```
 
 Данные можно залить одним из способов:
-- **Готовый дамп** (все таблицы + ~1000 задач): `pg_restore -U postgres -h localhost -p 5432 -d mobile_app --no-owner db_export\mobile_app.dump`
+- **Готовый дамп** (все таблицы + ~1000 задач): `pg_restore -U postgres -h localhost -p <PORT> -d mobile_app --no-owner db_export\mobile_app.dump`
 - **или миграции + seed** (шаги 2–3 ниже).
 
-Если порт у вас не 5432 — замените его везде (в `.env`, `alembic.ini`, командах выше).
+Если порт не 5432 — пропишите его в `backend/.env` (`DB_PORT`) и `backend/alembic.ini`
+(`sqlalchemy.url`), а также во всех командах выше.
 
 ### 2. Бэкенд (FastAPI)
 
@@ -104,6 +112,9 @@ cd backend\ui
 flutter pub get
 flutter run -d edge                # или chrome / windows / emulator (список: flutter devices)
 ```
+
+Интерфейс полностью кастомный: тёмная тема «жидкое стекло», все иконки рисуются через
+CustomPaint (`lib/widgets/glass_icons.dart`), никаких стикеров и эмодзи.
 
 Адрес бэкенда задаётся в `lib/api/api_client.dart`; по умолчанию:
 - Web / десктоп: `http://127.0.0.1:8000/api/v1`
@@ -148,3 +159,14 @@ flutter build apk --release
 
 Все экраны связаны навигацией (кнопка «Назад»), единый стиль, любая ошибка показывается
 пользователю сообщением.
+
+## Типичные проблемы (кратко)
+
+| Симптом | Причина и решение |
+|---------|-------------------|
+| `Connection refused ... port 5432` | Служба PostgreSQL остановлена или порт нестандартный. `Get-Service postgresql*`, узнать порт, прописать в `.env` и `alembic.ini`. |
+| `нет доступа к таблице alembic_version` | Таблица принадлежит `postgres`. `ALTER TABLE alembic_version OWNER TO app_user;` |
+| `running scripts is disabled` | PowerShell: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. |
+| Кракозябры в консоли | `$env:PGCLIENTENCODING='UTF8'`. |
+| `Failed to fetch` в UI | Бэкенд не запущен, браузер блокирует localhost (анитрекер/прокси), или IPv6: используйте `127.0.0.1`. |
+| APK не грузит данные на телефоне | Нет INTERNET-разрешения/cleartext (уже настроено), бэкенд не в той Wi-Fi сети, не открыт порт 8000 в брандмауэре, неверный `API_BASE_URL`. |
