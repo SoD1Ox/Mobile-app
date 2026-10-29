@@ -7,6 +7,7 @@ import '../api/api_client.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
+import '../widgets/glass_icons.dart';
 import 'tasks_screen.dart';
 
 class ProjectsScreen extends StatefulWidget {
@@ -94,7 +95,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: SearchBar(
               hintText: 'Поиск проектов…',
-              leading: const Icon(Icons.search),
+              leading: const Padding(
+                  padding: EdgeInsets.only(left: 12),
+                  child: GlassIcon(Glyph.search, size: 20)),
               elevation: const WidgetStatePropertyAll(0),
               onSubmitted: (v) {
                 _search = v.trim();
@@ -107,7 +110,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
               onPressed: () => _openForm(),
-              icon: const Icon(Icons.add),
+              icon: const GlassIcon(Glyph.add, size: 20),
               label: const Text('Проект'))
           : null,
       body: _loading
@@ -121,25 +124,22 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                           itemCount: _items.length,
                           itemBuilder: (_, i) {
                             final p = _items[i];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 4),
+                            return GlassListCard(
                               child: ListTile(
                                 title: Text(p.name),
                                 subtitle: Text(
                                     'Клиент #${p.clientId} · бюджет ${_fmtMoney(p.budget)} ₽'),
                                 trailing: Wrap(spacing: 4, children: [
                                   if (canManage)
-                                    IconButton(
-                                        icon: const Icon(Icons.edit_outlined),
+                                    GlassIconButton(Glyph.edit,
+                                        tooltip: 'Редактировать',
                                         onPressed: () => _openForm(existing: p)),
                                   if (canManage)
-                                    IconButton(
-                                        icon: const Icon(Icons.delete_outline,
-                                            color: Colors.red),
+                                    GlassIconButton(Glyph.delete,
+                                        tooltip: 'Удалить',
+                                        color: const Color(0xFFFF7A7A),
                                         onPressed: () => _delete(p)),
-                                  IconButton(
-                                      icon: const Icon(Icons.list_alt),
+                                  GlassIconButton(Glyph.list,
                                       tooltip: 'Задачи проекта',
                                       onPressed: () => Navigator.push(
                                           context,
@@ -188,12 +188,10 @@ class _Pager extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconButton(
-              icon: const Icon(Icons.chevron_left),
+          GlassIconButton(Glyph.chevronLeft,
               onPressed: page > 1 ? () => onChanged(page - 1) : null),
           Text('Стр. $page из $pages'),
-          IconButton(
-              icon: const Icon(Icons.chevron_right),
+          GlassIconButton(Glyph.chevronRight,
               onPressed: page < pages ? () => onChanged(page + 1) : null),
         ],
       ),
@@ -305,7 +303,7 @@ class _ProjectFormScreenState extends State<_ProjectFormScreen> {
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: _saving ? null : _save,
-              icon: const Icon(Icons.save_outlined),
+              icon: const GlassIcon(Glyph.save, size: 19),
               label: Text(_isEdit ? 'Сохранить' : 'Создать'),
             ),
           ],

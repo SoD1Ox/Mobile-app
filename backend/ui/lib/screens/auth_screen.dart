@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../models/models.dart';
+import '../widgets/glass_icons.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,13 +48,16 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: Form(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
               key: _formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(Icons.assignment_outlined,
+                  GlassIcon(Glyph.task,
                       size: 72, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(height: 12),
                   Text('Task Tracker',
@@ -66,8 +70,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 32),
                   TextFormField(
                     controller: _username,
-                    decoration: const InputDecoration(
-                        labelText: 'Имя пользователя', prefixIcon: Icon(Icons.person)),
+                    decoration: InputDecoration(
+                        labelText: 'Имя пользователя',
+                        prefixIcon: GlassIcon(Glyph.person, size: 20)),
                     validator: (v) =>
                         (v == null || v.trim().length < 3) ? 'Минимум 3 символа' : null,
                   ),
@@ -77,11 +82,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: _obscure,
                     decoration: InputDecoration(
                       labelText: 'Пароль',
-                      prefixIcon: const Icon(Icons.lock),
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscure
-                            ? Icons.visibility_off
-                            : Icons.visibility),
+                      prefixIcon: GlassIcon(Glyph.lock, size: 20),
+                      suffixIcon: GlassIconButton(
+                        _obscure ? Glyph.eyeOff : Glyph.eye,
+                        size: 20,
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
@@ -112,6 +116,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodySmall),
                 ],
+              ),
+                ),
               ),
             ),
           ),
@@ -175,7 +181,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: Form(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -224,8 +233,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 8),
                   TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('← Назад к входу')),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GlassIcon(Glyph.back, size: 18),
+                          SizedBox(width: 6),
+                          Text('Назад к входу'),
+                        ],
+                      )),
                 ],
+              ),
+                ),
               ),
             ),
           ),

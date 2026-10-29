@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
+import '../widgets/glass_icons.dart';
 import 'task_form_screen.dart';
 
 class TaskDetailScreen extends StatefulWidget {
@@ -131,14 +132,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Задача #${t.id}'),
+        leading: IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const GlassIcon(Glyph.back, size: 20)),
         actions: [
           if (canEdit)
-            IconButton(
-                icon: const Icon(Icons.edit_outlined), onPressed: _edit),
+            GlassIconButton(Glyph.edit, tooltip: 'Редактировать', onPressed: _edit),
           if (canDelete)
-            IconButton(
-                icon: const Icon(Icons.delete_outline),
-                color: Colors.red,
+            GlassIconButton(Glyph.delete,
+                tooltip: 'Удалить',
+                color: const Color(0xFFFF7A7A),
                 onPressed: _delete),
         ],
       ),
@@ -170,9 +173,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             const SizedBox(height: 8),
           ],
           Text('Автор: #${t.authorId} · Проект: #${t.projectId}',
-              style: TextStyle(color: Colors.grey.shade600)),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.55))),
           Text('Создана: ${_fmt(t.createdAt)}   Обновлена: ${_fmt(t.updatedAt)}',
-              style: TextStyle(color: Colors.grey.shade600)),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.55))),
           const SizedBox(height: 16),
           if (user?.canManage ?? false) ...[
             Text('Сменить статус',
@@ -197,14 +200,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           for (final c in _comments)
-            Card(
-              margin: const EdgeInsets.symmetric(vertical: 4),
+            GlassListCard(
               child: ListTile(
                 title: Text(c.text),
                 subtitle: Text('Автор #${c.authorId} · ${_fmt(c.createdAt)}'),
                 trailing: (user?.canManage ?? false)
-                    ? IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20),
+                    ? GlassIconButton(Glyph.delete,
+                        size: 19,
+                        tooltip: 'Удалить комментарий',
+                        color: const Color(0xFFFF7A7A),
                         onPressed: () => _deleteComment(c))
                     : null,
               ),
@@ -213,7 +217,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text('Комментариев пока нет',
-                  style: TextStyle(color: Colors.grey.shade600)),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.55))),
             ),
           const SizedBox(height: 8),
           Row(
@@ -221,16 +225,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               Expanded(
                 child: TextField(
                   controller: _commentText,
-                  decoration: const InputDecoration(
-                      labelText: 'Новый комментарий',
-                      border: OutlineInputBorder()),
+                  decoration:
+                    const InputDecoration(labelText: 'Новый комментарий'),
                   maxLines: 2,
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton.filled(
+              FilledButton(
                   onPressed: _busy ? null : _addComment,
-                  icon: const Icon(Icons.send)),
+                  child: const GlassIcon(Glyph.send, size: 20)),
             ],
           ),
         ],

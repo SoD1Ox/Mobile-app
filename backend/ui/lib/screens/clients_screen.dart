@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
+import '../widgets/glass_icons.dart';
 
 class ClientsScreen extends StatefulWidget {
   const ClientsScreen({super.key});
@@ -81,7 +82,9 @@ class _ClientsScreenState extends State<ClientsScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: SearchBar(
               hintText: 'Поиск по названию…',
-              leading: const Icon(Icons.search),
+              leading: const Padding(
+                  padding: EdgeInsets.only(left: 12),
+                  child: GlassIcon(Glyph.search, size: 20)),
               elevation: const WidgetStatePropertyAll(0),
               onSubmitted: (v) {
                 _search = v.trim();
@@ -94,7 +97,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
               onPressed: () => _openForm(),
-              icon: const Icon(Icons.add),
+              icon: const GlassIcon(Glyph.add, size: 20),
               label: const Text('Клиент'))
           : null,
       body: _loading
@@ -108,9 +111,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
                           itemCount: _items.length,
                           itemBuilder: (_, i) {
                             final c = _items[i];
-                            return Card(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 4),
+                            return GlassListCard(
                               child: ListTile(
                                 leading: CircleAvatar(
                                     child: Text(c.name.characters.first.toUpperCase())),
@@ -122,23 +123,22 @@ class _ClientsScreenState extends State<ClientsScreen> {
                                 trailing: Wrap(
                                     spacing: 4,
                                     children: <Widget>[
-                                      IconButton(
-                                        icon: const Icon(Icons.people_outline),
-                                        tooltip: 'Контактные лица',
-                                        onPressed: () => Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    ContactsScreen(client: c))),
+                                      GlassIconButton(Glyph.people,
+                                          tooltip: 'Контактные лица',
+                                          onPressed: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      ContactsScreen(client: c))),
                                       ),
                                       if (canManage)
-                                        IconButton(
-                                            icon: const Icon(Icons.edit_outlined),
+                                        GlassIconButton(Glyph.edit,
+                                            tooltip: 'Редактировать',
                                             onPressed: () => _openForm(existing: c)),
                                       if (canManage)
-                                        IconButton(
-                                            icon: const Icon(Icons.delete_outline,
-                                                color: Colors.red),
+                                        GlassIconButton(Glyph.delete,
+                                            tooltip: 'Удалить',
+                                            color: const Color(0xFFFF7A7A),
                                             onPressed: () => _delete(c)),
                                     ]),
                               ),
@@ -152,12 +152,10 @@ class _ClientsScreenState extends State<ClientsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        IconButton(
-                            icon: const Icon(Icons.chevron_left),
+                        GlassIconButton(Glyph.chevronLeft,
                             onPressed: _page > 1 ? () => _load(page: _page - 1) : null),
                         Text('Стр. $_page из $_pages'),
-                        IconButton(
-                            icon: const Icon(Icons.chevron_right),
+                        GlassIconButton(Glyph.chevronRight,
                             onPressed:
                                 _page < _pages ? () => _load(page: _page + 1) : null),
                       ],
@@ -235,7 +233,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
       appBar: AppBar(title: Text('Контакты: ${widget.client.name}')),
       floatingActionButton: canManage
           ? FloatingActionButton(
-              onPressed: () => _openForm(), child: const Icon(Icons.person_add))
+              onPressed: () => _openForm(),
+              child: const GlassIcon(Glyph.plusCircle, size: 24))
           : null,
       body: _loading
           ? const LoadingView()
@@ -245,9 +244,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                   itemCount: _contacts.length,
                   itemBuilder: (_, i) {
                     final c = _contacts[i];
-                    return Card(
-                      margin:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    return GlassListCard(
                       child: ListTile(
                         title: Text(c.fullName),
                         subtitle: Text([
@@ -257,12 +254,12 @@ class _ContactsScreenState extends State<ContactsScreen> {
                         ].join(' · ')),
                         trailing: canManage
                             ? Wrap(spacing: 4, children: [
-                                IconButton(
-                                    icon: const Icon(Icons.edit_outlined),
+                                GlassIconButton(Glyph.edit,
+                                    tooltip: 'Редактировать',
                                     onPressed: () => _openForm(existing: c)),
-                                IconButton(
-                                    icon: const Icon(Icons.delete_outline,
-                                        color: Colors.red),
+                                GlassIconButton(Glyph.delete,
+                                    tooltip: 'Удалить',
+                                    color: const Color(0xFFFF7A7A),
                                     onPressed: () => _delete(c)),
                               ])
                             : null,
@@ -354,7 +351,7 @@ class _ClientFormScreenState extends State<_ClientFormScreen> {
               const SizedBox(height: 24),
               FilledButton.icon(
                   onPressed: _saving ? null : _save,
-                  icon: const Icon(Icons.save_outlined),
+                  icon: const GlassIcon(Glyph.save, size: 19),
                   label: Text(_isEdit ? 'Сохранить' : 'Создать')),
             ],
           ),
@@ -442,7 +439,7 @@ class _ContactFormScreenState extends State<_ContactFormScreen> {
               const SizedBox(height: 24),
               FilledButton.icon(
                   onPressed: _saving ? null : _save,
-                  icon: const Icon(Icons.save_outlined),
+                  icon: const GlassIcon(Glyph.save, size: 19),
                   label: Text(_isEdit ? 'Сохранить' : 'Создать')),
             ],
           ),

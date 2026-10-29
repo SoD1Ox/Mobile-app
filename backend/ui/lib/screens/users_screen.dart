@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../widgets/common.dart';
+import '../widgets/glass_icons.dart';
 
 class UsersScreen extends StatefulWidget {
   const UsersScreen({super.key});
@@ -73,7 +74,7 @@ class _UsersScreenState extends State<UsersScreen> {
       appBar: AppBar(title: const Text('Пользователи')),
       floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _openForm(),
-          icon: const Icon(Icons.person_add),
+          icon: const GlassIcon(Glyph.plusCircle, size: 20),
           label: const Text('Пользователь')),
       body: _loading
           ? const LoadingView()
@@ -83,9 +84,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 final u = _users[i];
                 final role = '${u['role']}';
                 final isMe = me?.id == u['id'];
-                return Card(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                return GlassListCard(
                   child: ListTile(
                     leading: CircleAvatar(
                         child: Text((u['full_name'] as String? ?? '?')
@@ -102,14 +101,17 @@ class _UsersScreenState extends State<UsersScreen> {
                     isThreeLine: true,
                     trailing: isMe
                         ? const Tooltip(
-                            message: 'Это вы', child: Icon(Icons.person))
+                            message: 'Это вы',
+                            child: Padding(
+                                padding: EdgeInsets.all(8),
+                                child: GlassIcon(Glyph.person, size: 20)))
                         : Wrap(spacing: 4, children: [
-                            IconButton(
-                                icon: const Icon(Icons.edit_outlined),
+                            GlassIconButton(Glyph.edit,
+                                tooltip: 'Редактировать',
                                 onPressed: () => _openForm(existing: u)),
-                            IconButton(
-                                icon: const Icon(Icons.delete_outline,
-                                    color: Colors.red),
+                            GlassIconButton(Glyph.delete,
+                                tooltip: 'Удалить',
+                                color: const Color(0xFFFF7A7A),
                                 onPressed: () => _delete(u)),
                           ]),
                   ),
@@ -241,7 +243,7 @@ class _UserFormScreenState extends State<_UserFormScreen> {
             const SizedBox(height: 24),
             FilledButton.icon(
                 onPressed: _saving ? null : _save,
-                icon: const Icon(Icons.save_outlined),
+                icon: const GlassIcon(Glyph.save, size: 19),
                 label: Text(_isEdit ? 'Сохранить' : 'Создать')),
           ],
         ),

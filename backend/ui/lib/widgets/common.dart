@@ -1,10 +1,12 @@
 /// Shared UI building blocks used across every screen so the app stays
-/// in one visual style (Material 3, same paddings, same error handling).
+/// in one visual style (glass Material 3, same paddings, same error handling).
 library;
 
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import 'glass_icons.dart';
+import '../theme/glass.dart';
 
 /// Standard form text field with validation message shown inline.
 class AppTextField extends StatelessWidget {
@@ -36,16 +38,45 @@ class AppTextField extends StatelessWidget {
           obscureText: obscureText,
           maxLines: obscureText ? 1 : maxLines,
           keyboardType: keyboardType,
-          decoration: InputDecoration(
-            labelText: label,
-            border: const OutlineInputBorder(),
-            suffixIcon: suffix,
-          ),
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(labelText: label, suffixIcon: suffix),
         ),
       );
 }
 
-/// Colored chip for task status / priority.
+/// Glass dropdown that matches [AppTextField] styling.
+class AppDropdown<T> extends StatelessWidget {
+  final T value;
+  final String label;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+  final String? Function(T?)? validator;
+
+  const AppDropdown({
+    super.key,
+    required this.value,
+    required this.label,
+    required this.items,
+    required this.onChanged,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: DropdownButtonFormField<T>(
+          initialValue: value,
+          decoration: InputDecoration(labelText: label),
+          dropdownColor: const Color(0xF216294E),
+          style: const TextStyle(color: Colors.white),
+          items: items,
+          onChanged: onChanged,
+          validator: validator,
+        ),
+      );
+}
+
+/// Colored glass chip for task status / priority.
 class StatusChip extends StatelessWidget {
   final String label;
   final Color color;
@@ -54,31 +85,32 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.14),
+          color: color.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.5)),
+          border: Border.all(color: color.withValues(alpha: 0.55)),
         ),
         child: Text(label,
-            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+            style: TextStyle(
+                color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
       );
 }
 
 Color statusColor(String s) => switch (s) {
-      'new' => Colors.blueGrey,
-      'in_progress' => Colors.blue,
-      'review' => Colors.deepPurple,
-      'done' => Colors.green,
-      'canceled' => Colors.red,
+      'new' => Color(0xFF7986CB),
+      'in_progress' => Color(0xFF42A5F5),
+      'review' => Color(0xFF9575CD),
+      'done' => Color(0xFF66BB6A),
+      'canceled' => Color(0xFFEF5350),
       _ => Colors.grey,
     };
 
 Color priorityColor(String p) => switch (p) {
-      'low' => Colors.green,
-      'medium' => Colors.orange,
-      'high' => Colors.deepOrange,
-      'critical' => Colors.red,
+      'low' => Color(0xFF66BB6A),
+      'medium' => Color(0xFFFFA726),
+      'high' => Color(0xFFFF7043),
+      'critical' => Color(0xFFEF5350),
       _ => Colors.grey,
     };
 
@@ -94,7 +126,7 @@ Future<bool> confirmDialog(BuildContext context, String title, String text,
         TextButton(
             onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
         FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF5350)),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(okLabel)),
       ],
@@ -125,4 +157,77 @@ class LoadingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Center(child: CircularProgressIndicator());
+}
+
+/// Frosted-glass list card: translucent gradient fill + hairline border.
+/// Deliberately NO BackdropFilter inside scrolling lists — blur would be
+/// re-rasterized per frame and kill scroll FPS; this paints one cheap layer.
+class GlassListCard extends StatelessWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+
+  const GlassListCard({super.key, required this.child, this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: kGlassRadius,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withValues(alpha: 0.13),
+                Colors.white.withValues(alpha: 0.05),
+              ],
+            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: kGlassRadius,
+              child: child,
+            ),
+          ),
+        ),
+      );
+}
+
+/// Page indicator shared by paginated screens.
+class PagerBar extends StatelessWidget {
+  final int page;
+  final int pages;
+  final ValueChanged<int> onChanged;
+
+  const PagerBar(
+      {super.key, required this.page, required this.pages, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    if (pages <= 1) return const SizedBox(height: 8);
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          GlassIconButton(Glyph.chevronLeft,
+              onPressed: page > 1 ? () => onChanged(page - 1) : null),
+          Text('Стр. $page из $pages',
+              style: const TextStyle(color: Colors.white70)),
+          GlassIconButton(Glyph.chevronRight,
+              onPressed: page < pages ? () => onChanged(page + 1) : null),
+        ],
+      ),
+    );
+  }
 }

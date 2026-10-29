@@ -8,6 +8,7 @@ import '../api/api_client.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
+import '../widgets/glass_icons.dart';
 
 class TaskFormScreen extends StatefulWidget {
   final TaskItem? existing; // null => create
@@ -211,7 +212,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.save_outlined),
+                        : const GlassIcon(Glyph.save, size: 19),
                     label: Text(_isEdit ? 'Сохранить изменения' : 'Создать задачу'),
                   ),
                 ],

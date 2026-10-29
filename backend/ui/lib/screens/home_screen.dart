@@ -8,10 +8,18 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
+import '../widgets/glass_icons.dart';
 import 'clients_screen.dart';
 import 'projects_screen.dart';
 import 'tasks_screen.dart';
 import 'users_screen.dart';
+
+/// Bottom-nav destination built from custom vector glyphs (no Material Icons).
+class _Dest {
+  final Glyph icon;
+  final String label;
+  const _Dest(this.icon, this.label);
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -86,33 +94,23 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return Scaffold(
+      extendBody: true, // let content scroll under the glass nav bar
       body: IndexedStack(index: _tab, children: tabs),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: [
-          const NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined),
-              selectedIcon: Icon(Icons.dashboard),
-              label: 'Главная'),
-          const NavigationDestination(
-              icon: Icon(Icons.assignment_outlined),
-              selectedIcon: Icon(Icons.assignment),
-              label: 'Задачи'),
-          const NavigationDestination(
-              icon: Icon(Icons.folder_outlined),
-              selectedIcon: Icon(Icons.folder),
-              label: 'Проекты'),
-          const NavigationDestination(
-              icon: Icon(Icons.business_outlined),
-              selectedIcon: Icon(Icons.business),
-              label: 'Клиенты'),
-          if (user.isAdmin)
-            const NavigationDestination(
-                icon: Icon(Icons.people_outline),
-                selectedIcon: Icon(Icons.people),
-                label: 'Пользователи'),
-        ],
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+        child: GlassPanel(
+          child: _GlassNavBar(
+            index: _tab,
+            onTap: (i) => setState(() => _tab = i),
+            destinations: [
+              const _Dest(Glyph.dashboard, 'Главная'),
+              const _Dest(Glyph.task, 'Задачи'),
+              const _Dest(Glyph.folder, 'Проекты'),
+              const _Dest(Glyph.building, 'Клиенты'),
+              if (user.isAdmin) const _Dest(Glyph.people, 'Люди'),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -123,9 +121,8 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Task Tracker'),
         actions: [
-          IconButton(
+          GlassIconButton(Glyph.logout,
               tooltip: 'Выйти',
-              icon: const Icon(Icons.logout),
               onPressed: () async {
                 final yes = await confirmDialog(context, 'Выйти?',
                     'Сессия будет завершена.',
@@ -183,21 +180,21 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                     child: _StatTile(
-                        icon: Icons.assignment,
+                        glyph: Glyph.task,
                         label: 'Задачи',
                         value: _taskCount,
                         loading: _statsLoading)),
                 const SizedBox(width: 8),
                 Expanded(
                     child: _StatTile(
-                        icon: Icons.folder_outlined,
+                        glyph: Glyph.folder,
                         label: 'Проекты',
                         value: _projectCount,
                         loading: _statsLoading)),
                 const SizedBox(width: 8),
                 Expanded(
                     child: _StatTile(
-                        icon: Icons.business_outlined,
+                        glyph: Glyph.building,
                         label: 'Клиенты',
                         value: _clientCount,
                         loading: _statsLoading)),
@@ -209,19 +206,19 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('Разделы', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             _NavCard(
-                icon: Icons.assignment_outlined,
+                glyph: Glyph.task,
                 title: 'Задачи',
                 subtitle: 'Поиск, фильтры, пагинация, комментарии',
                 onTap: () => _openSection(1)),
             _NavCard(
-                icon: Icons.folder_outlined,
+                glyph: Glyph.folder,
                 title: 'Проекты',
                 subtitle: user.canManage
                     ? 'Просмотр и управление проектами'
                     : 'Просмотр проектов',
                 onTap: () => _openSection(2)),
             _NavCard(
-                icon: Icons.business_outlined,
+                glyph: Glyph.building,
                 title: 'Клиенты',
                 subtitle: user.canManage
                     ? 'Клиенты и контактные лица'
@@ -229,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () => _openSection(3)),
             if (user.isAdmin)
               _NavCard(
-                  icon: Icons.people_outline,
+                  glyph: Glyph.people,
                   title: 'Пользователи',
                   subtitle: 'Управление учётными записями и ролями (админ)',
                   onTap: () => _openSection(4)),
@@ -241,13 +238,13 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _StatTile extends StatelessWidget {
-  final IconData icon;
+  final Glyph glyph;
   final String label;
   final int? value;
   final bool loading;
 
   const _StatTile(
-      {required this.icon,
+      {required this.glyph,
       required this.label,
       required this.value,
       required this.loading});
@@ -258,7 +255,7 @@ class _StatTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14),
           child: Column(
             children: [
-              Icon(icon, size: 26),
+              GlassIcon(glyph, size: 26),
               const SizedBox(height: 6),
               loading
                   ? const SizedBox(
@@ -275,13 +272,13 @@ class _StatTile extends StatelessWidget {
 }
 
 class _NavCard extends StatelessWidget {
-  final IconData icon;
+  final Glyph glyph;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
 
   const _NavCard(
-      {required this.icon,
+      {required this.glyph,
       required this.title,
       required this.subtitle,
       required this.onTap});
@@ -290,11 +287,80 @@ class _NavCard extends StatelessWidget {
   Widget build(BuildContext context) => Card(
         margin: const EdgeInsets.symmetric(vertical: 5),
         child: ListTile(
-          leading: Icon(icon, size: 30),
+          leading: GlassIcon(glyph, size: 30),
           title: Text(title),
           subtitle: Text(subtitle),
-          trailing: const Icon(Icons.chevron_right),
+          trailing: const GlassIcon(Glyph.chevronRight, size: 20),
           onTap: onTap,
+        ),
+      );
+}
+
+/// Custom glass bottom navigation bar built from vector glyphs — replaces
+/// NavigationBar/Icons entirely. Animated selection pill, no icon font.
+class _GlassNavBar extends StatelessWidget {
+  final int index;
+  final ValueChanged<int> onTap;
+  final List<_Dest> destinations;
+
+  const _GlassNavBar(
+      {required this.index, required this.onTap, required this.destinations});
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 68,
+        child: Row(
+          children: [
+            for (var i = 0; i < destinations.length; i++)
+              Expanded(
+                child: InkWell(
+                  onTap: () => onTap(i),
+                  borderRadius: BorderRadius.circular(18),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    margin:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: i == index
+                          ? const LinearGradient(
+                              colors: [Color(0x595B8CFF), Color(0x265B8CFF)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight)
+                          : null,
+                      border: Border.all(
+                          color: i == index
+                              ? const Color(0x665B8CFF)
+                              : Colors.transparent),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        GlassIcon(destinations[i].icon,
+                            size: 21,
+                            color: i == index
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.55)),
+                        const SizedBox(height: 3),
+                        Text(destinations[i].label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: i == index
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: i == index
+                                    ? Colors.white
+                                    : Colors.white
+                                        .withValues(alpha: 0.55))),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       );
 }

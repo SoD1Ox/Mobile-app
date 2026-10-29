@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
+import '../widgets/glass_icons.dart';
 import 'task_detail_screen.dart';
 import 'task_form_screen.dart';
 
@@ -115,7 +116,9 @@ class _TasksScreenState extends State<TasksScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: SearchBar(
                   hintText: 'Поиск по названию / описанию…',
-                  leading: const Icon(Icons.search),
+                  leading: const Padding(
+                      padding: EdgeInsets.only(left: 12),
+                      child: GlassIcon(Glyph.search, size: 20)),
                   elevation: const WidgetStatePropertyAll(0),
                   onSubmitted: (v) {
                     _search = v.trim();
@@ -146,7 +149,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     if (_search.isNotEmpty || _status != null || _priority != null) ...[
                       const SizedBox(width: 8),
                       ActionChip(
-                        avatar: const Icon(Icons.close, size: 16),
+                        avatar: const GlassIcon(Glyph.close, size: 15),
                         label: const Text('Сбросить'),
                         onPressed: () {
                           setState(() {
@@ -161,7 +164,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     const SizedBox(width: 8),
                     Chip(
                       label: Text('Всего: $_total'),
-                      avatar: const Icon(Icons.storage_outlined, size: 16),
+                      avatar: const GlassIcon(Glyph.list, size: 15),
                     ),
                   ],
                 ),
@@ -172,7 +175,7 @@ class _TasksScreenState extends State<TasksScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(),
-        icon: const Icon(Icons.add),
+        icon: const GlassIcon(Glyph.add, size: 20),
         label: const Text('Новая задача'),
       ),
       body: _items.isEmpty && !_loading
@@ -191,8 +194,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     );
                   }
                   final t = _items[i];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  return GlassListCard(
                     child: ListTile(
                       contentPadding:
                           const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -214,19 +216,18 @@ class _TasksScreenState extends State<TasksScreen> {
                               Text('#${t.tags.map((e) => e.name).join(' #')}',
                                   style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade600)),
+                                      color: Colors.white.withValues(alpha: 0.55))),
                             Text('~${t.estimateHours} ч',
                                 style: TextStyle(
-                                    fontSize: 12, color: Colors.grey.shade600)),
+                                    fontSize: 12, color: Colors.white.withValues(alpha: 0.55))),
                           ],
                         ),
                       ),
                       trailing: user?.canManage ?? false
-                          ? IconButton(
-                              icon: const Icon(Icons.edit_outlined),
-                              onPressed: () => _openForm(task: t),
-                            )
-                          : const Icon(Icons.chevron_right),
+                          ? GlassIconButton(Glyph.edit,
+                              tooltip: 'Редактировать',
+                              onPressed: () => _openForm(task: t))
+                          : const GlassIcon(Glyph.chevronRight, size: 20),
                       onTap: () async {
                         final changed = await Navigator.push<bool>(
                           context,

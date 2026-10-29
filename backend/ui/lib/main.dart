@@ -14,6 +14,7 @@ import 'app_state.dart';
 import 'models/models.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
+import 'theme/glass.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,11 +62,7 @@ class _TaskTrackerAppState extends State<TaskTrackerApp> {
     return MaterialApp(
       title: 'Task Tracker',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1E88E5)),
-        useMaterial3: true,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
+      theme: buildGlassTheme(),
       home: AppScope(
         api: _api,
         user: _user,
@@ -77,7 +74,11 @@ class _TaskTrackerAppState extends State<TaskTrackerApp> {
                 ? const LoginScreen()
                 : const HomeScreen(),
       ),
-      builder: (context, child) => SafeArea(child: child ?? const SizedBox()),
+      // The glass background is painted once here so it sits behind every
+      // route (including pushed screens) without each screen re-wrapping it.
+      builder: (context, child) => AppBackground(
+        child: SafeArea(child: child ?? const SizedBox()),
+      ),
     );
   }
 }
