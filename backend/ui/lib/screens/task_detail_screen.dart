@@ -75,7 +75,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     setState(() => _busy = true);
     final ok = await runGuarded(context, () async {
       await AppScope.of(context).api.post(
-          '/tasks/${widget.taskId}/comments', {'text': text});
+          '/tasks/${widget.taskId}/comments',
+          {'text': text, 'task_id': widget.taskId});
     });
     if (!mounted) return;
     setState(() => _busy = false);
