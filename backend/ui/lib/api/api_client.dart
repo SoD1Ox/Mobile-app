@@ -7,6 +7,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,9 +24,18 @@ class ApiException implements Exception {
 class ApiClient {
   /// Backend base URL.  Android emulator reaches the host machine via
   /// 10.0.2.2; desktop / web / iOS use localhost.
+  static const String _defaultBaseUrl = kIsWeb
+      // Web served by flutter run on another port -> use an absolute URL to
+      // the FastAPI server. 127.0.0.1 is used instead of localhost because on
+      // Windows browsers may resolve "localhost" to IPv6 ::1 first, while
+      // uvicorn listens on IPv4 only -> request hangs and fails with
+      // "ClientException: Failed to fetch".
+      ? 'http://127.0.0.1:8000/api/v1'
+      : 'http://localhost:8000/api/v1';
+
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8000/api/v1',
+    defaultValue: _defaultBaseUrl,
   );
 
   String? _accessToken;
