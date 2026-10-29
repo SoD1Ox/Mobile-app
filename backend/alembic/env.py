@@ -47,7 +47,9 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    # Single source of truth: build the URL from app settings (.env),
+    # so DB_PORT/DB_HOST in .env always win over the static alembic.ini value.
+    url = settings.database_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -66,8 +68,12 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    # Take the URL from app settings (.env) so DB_HOST/DB_PORT there are the
+    # single source of truth; alembic.ini keeps only driver/pool options.
+    ini_section = dict(config.get_section(config.config_ini_section, {}))
+    ini_section["sqlalchemy.url"] = settings.database_url
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        ini_section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
