@@ -36,8 +36,12 @@ app = FastAPI(
 # CORS — allow the Flutter client (any origin in dev; tighten in production).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    # "*" + allow_credentials=True is an invalid CORS combination (Starlette
+    # then drops the Access-Control-Allow-Origin header), which makes browser
+    # requests fail with "ClientException: Failed to fetch".  A regex allows
+    # any dev origin (localhost / 127.0.0.1 on random flutter-run ports).
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
