@@ -33,12 +33,14 @@ class _UsersScreenState extends State<UsersScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final raw = await AppScope.of(context).api.get('/users');
+      final raw = await AppScope.read(context).api.get('/users');
+      if (!mounted) return;
       setState(() {
         _users = (raw as List).cast<Map<String, dynamic>>();
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _loading = false);
       if (mounted) showError(context, e);
     }
@@ -58,16 +60,15 @@ class _UsersScreenState extends State<UsersScreen> {
         'Удалить пользователя?',
         '«${u['username']}» (${_roleLabels[u['role']] ?? u['role']}) будет удалён навсегда.');
     if (!yes) return;
-        if (!mounted) return;
     // ignore: use_build_context_synchronously
-    final api = AppScope.of(context).api;
+    final api = AppScope.read(context).api;
     final ok = await runGuarded(context, () => api.delete('/users/${u['id']}'));
     if (ok) _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    final me = AppScope.of(context).user;
+    final me = AppScope.read(context).user;
     return Scaffold(
       appBar: AppBar(title: const Text('Пользователи')),
       floatingActionButton: FloatingActionButton.extended(
@@ -154,7 +155,7 @@ class _UserFormScreenState extends State<_UserFormScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
-    final api = AppScope.of(context).api;
+    final api = AppScope.read(context).api;
     final body = <String, dynamic>{
       'username': _username.text.trim(),
       'email': _email.text.trim(),

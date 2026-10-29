@@ -58,7 +58,7 @@ class _TasksScreenState extends State<TasksScreen> {
     if (_loading) return;
     setState(() => _loading = true);
     try {
-      final api = AppScope.of(context).api;
+      final api = AppScope.read(context).api;
       final next = reset ? 1 : _page + 1;
       final raw = await api.get('/tasks', {
         'page': next,
@@ -68,6 +68,7 @@ class _TasksScreenState extends State<TasksScreen> {
         if (_priority != null) 'priority': _priority,
       });
       final page = DataPage.fromJson(raw, TaskItem.fromJson);
+      if (!mounted) return;
       setState(() {
         if (reset) {
           _items = page.items;
@@ -102,7 +103,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = AppScope.of(context).user;
+    final user = AppScope.read(context).user;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Задачи'),
@@ -255,6 +256,7 @@ class _TasksScreenState extends State<TasksScreen> {
       ),
     );
     if (v != null) {
+      if (!mounted) return;
       setState(() => _status = v.isEmpty ? null : v);
       _load(reset: true);
     }
@@ -273,6 +275,7 @@ class _TasksScreenState extends State<TasksScreen> {
       ),
     );
     if (v != null) {
+      if (!mounted) return;
       setState(() => _priority = v.isEmpty ? null : v);
       _load(reset: true);
     }

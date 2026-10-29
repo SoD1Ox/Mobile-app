@@ -1,9 +1,12 @@
-/// Home screen: greeting, current-user info and navigation to every section.
+/// Authenticated app shell: dashboard + tab navigation (Задачи / Проекты /
+/// Клиенты / Пользователи) with an IndexedStack so every tab keeps its state
+/// (search text, filters, loaded pages) while switching tabs.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import '../models/models.dart';
 import '../widgets/common.dart';
 import 'clients_screen.dart';
 import 'projects_screen.dart';
@@ -23,6 +26,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _clientCount;
   bool _statsLoading = false;
 
+  /// Currently selected bottom-navigation tab.
+  int _tab = 0;
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
         api.get('/projects', {'page_size': 1}),
         api.get('/clients', {'page_size': 1}),
       ]);
+      if (!mounted) return;
       setState(() {
         _taskCount = results[0]['total'];
         _projectCount = results[1]['total'];
@@ -45,13 +52,13 @@ class _HomeScreenState extends State<HomeScreen> {
         _statsLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _statsLoading = false);
-      if (mounted) showError(context, e);
+      showError(context, e);
     }
   }
 
-  void _push(Widget screen) => Navigator.push(
-      context, MaterialPageRoute(builder: (_) => screen));
+  void _openSection(int index) => setState(() => _tab = index);
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +73,52 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? 'Добрый день'
                 : 'Добрый вечер';
 
+    // Tab order is fixed; the admin tab is appended only for admins, so the
+    // indices of the destinations below must stay in sync with this list.
+    final tabs = <Widget>[
+      // ==================== Dashboard tab ====================
+      _dashboard(user, greeting, scope),
+      // ==================== section tabs =====================
+      const TasksScreen(),
+      const ProjectsScreen(),
+      const ClientsScreen(),
+      if (user.isAdmin) const UsersScreen(),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(index: _tab, children: tabs),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: (i) => setState(() => _tab = i),
+        destinations: [
+          const NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'Главная'),
+          const NavigationDestination(
+              icon: Icon(Icons.assignment_outlined),
+              selectedIcon: Icon(Icons.assignment),
+              label: 'Задачи'),
+          const NavigationDestination(
+              icon: Icon(Icons.folder_outlined),
+              selectedIcon: Icon(Icons.folder),
+              label: 'Проекты'),
+          const NavigationDestination(
+              icon: Icon(Icons.business_outlined),
+              selectedIcon: Icon(Icons.business),
+              label: 'Клиенты'),
+          if (user.isAdmin)
+            const NavigationDestination(
+                icon: Icon(Icons.people_outline),
+                selectedIcon: Icon(Icons.people),
+                label: 'Пользователи'),
+        ],
+      ),
+    );
+  }
+
+  /// Dashboard tab content (greeting, stats, quick links to the sections).
+  Widget _dashboard(AppUser user, String greeting, AppScope scope) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Task Tracker'),
@@ -74,7 +127,8 @@ class _HomeScreenState extends State<HomeScreen> {
               tooltip: 'Выйти',
               icon: const Icon(Icons.logout),
               onPressed: () async {
-                final yes = await confirmDialog(context, 'Выйти?', 'Сессия будет завершена.',
+                final yes = await confirmDialog(context, 'Выйти?',
+                    'Сессия будет завершена.',
                     okLabel: 'Выйти');
                 if (!yes || !context.mounted) return;
                 await scope.api.clearTokens();
@@ -158,27 +212,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.assignment_outlined,
                 title: 'Задачи',
                 subtitle: 'Поиск, фильтры, пагинация, комментарии',
-                onTap: () => _push(const TasksScreen())),
+                onTap: () => _openSection(1)),
             _NavCard(
                 icon: Icons.folder_outlined,
                 title: 'Проекты',
                 subtitle: user.canManage
                     ? 'Просмотр и управление проектами'
                     : 'Просмотр проектов',
-                onTap: () => _push(const ProjectsScreen())),
+                onTap: () => _openSection(2)),
             _NavCard(
                 icon: Icons.business_outlined,
                 title: 'Клиенты',
                 subtitle: user.canManage
                     ? 'Клиенты и контактные лица'
                     : 'Просмотр клиентов',
-                onTap: () => _push(const ClientsScreen())),
+                onTap: () => _openSection(3)),
             if (user.isAdmin)
               _NavCard(
                   icon: Icons.people_outline,
                   title: 'Пользователи',
                   subtitle: 'Управление учётными записями и ролями (админ)',
-                  onTap: () => _push(const UsersScreen())),
+                  onTap: () => _openSection(4)),
           ],
         ),
       ),

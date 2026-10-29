@@ -34,7 +34,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
 
   Future<void> _load({int? page}) async {
     setState(() => _loading = true);
-    final api = AppScope.of(context).api;
+    final api = AppScope.read(context).api;
     try {
       final raw = await api.get('/projects', {
         'page': page ?? _page,
@@ -42,6 +42,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         if (_search.isNotEmpty) 'search': _search,
       });
       final p = DataPage.fromJson(raw, ProjectItem.fromJson);
+      if (!mounted) return;
       setState(() {
         _items = p.items;
         _page = p.page;
@@ -50,10 +51,12 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
       });
       if (_clients.isEmpty) {
         final craw = await api.get('/clients', {'page_size': 200});
+      if (!mounted) return;
         setState(() =>
             _clients = DataPage.fromJson(craw, ClientItem.fromJson).items);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _loading = false);
       if (mounted) showError(context, e);
     }
@@ -72,16 +75,15 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final yes = await confirmDialog(context, 'Удалить проект?',
         '«${p.name}» и все его задачи будут удалены.');
     if (!yes) return;
-        if (!mounted) return;
     // ignore: use_build_context_synchronously
-    final api = AppScope.of(context).api;
+    final api = AppScope.read(context).api;
     final ok = await runGuarded(context, () => api.delete('/projects/${p.id}'));
     if (ok) _load(page: 1);
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = AppScope.of(context).user;
+    final user = AppScope.read(context).user;
     final canManage = user?.canManage ?? false;
     return Scaffold(
       appBar: AppBar(
@@ -243,7 +245,7 @@ class _ProjectFormScreenState extends State<_ProjectFormScreen> {
       return;
     }
     setState(() => _saving = true);
-    final api = AppScope.of(context).api;
+    final api = AppScope.read(context).api;
     final body = {
       'name': _name.text.trim(),
       'description':

@@ -32,12 +32,13 @@ class _ClientsScreenState extends State<ClientsScreen> {
   Future<void> _load({int? page}) async {
     setState(() => _loading = true);
     try {
-      final raw = await AppScope.of(context).api.get('/clients', {
+      final raw = await AppScope.read(context).api.get('/clients', {
         'page': page ?? _page,
         'page_size': _pageSize,
         if (_search.isNotEmpty) 'search': _search,
       });
       final p = DataPage.fromJson(raw, ClientItem.fromJson);
+      if (!mounted) return;
       setState(() {
         _items = p.items;
         _page = p.page;
@@ -62,16 +63,15 @@ class _ClientsScreenState extends State<ClientsScreen> {
     final yes = await confirmDialog(
         context, 'Удалить клиента?', '«${c.name}» будет удалён навсегда.');
     if (!yes) return;
-        if (!mounted) return;
     // ignore: use_build_context_synchronously
-    final api = AppScope.of(context).api;
+    final api = AppScope.read(context).api;
     final ok = await runGuarded(context, () => api.delete('/clients/${c.id}'));
     if (ok) _load(page: 1);
   }
 
   @override
   Widget build(BuildContext context) {
-    final canManage = AppScope.of(context).user?.canManage ?? false;
+    final canManage = AppScope.read(context).user?.canManage ?? false;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Клиенты'),
@@ -192,15 +192,17 @@ class _ContactsScreenState extends State<ContactsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final raw = await AppScope.of(context)
+      final raw = await AppScope.read(context)
           .api
           .get('/clients/${widget.client.id}/contacts');
+      if (!mounted) return;
       setState(() {
         _contacts =
             (raw as List).map((e) => ContactItem.fromJson(e)).toList();
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _loading = false);
       if (mounted) showError(context, e);
     }
@@ -220,16 +222,15 @@ class _ContactsScreenState extends State<ContactsScreen> {
     final yes = await confirmDialog(
         context, 'Удалить контакт?', '«${c.fullName}» будет удалён.');
     if (!yes) return;
-        if (!mounted) return;
     // ignore: use_build_context_synchronously
-    final api = AppScope.of(context).api;
+    final api = AppScope.read(context).api;
     final ok = await runGuarded(context, () => api.delete('/clients/contacts/${c.id}'));
     if (ok) _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    final canManage = AppScope.of(context).user?.canManage ?? false;
+    final canManage = AppScope.read(context).user?.canManage ?? false;
     return Scaffold(
       appBar: AppBar(title: Text('Контакты: ${widget.client.name}')),
       floatingActionButton: canManage
@@ -311,9 +312,9 @@ class _ClientFormScreenState extends State<_ClientFormScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
-        if (!mounted) return;
+      if (!mounted) return;
     // ignore: use_build_context_synchronously
-    final api = AppScope.of(context).api;
+    final api = AppScope.read(context).api;
     final ok = await runGuarded(context, () async {
       if (_isEdit) {
         await api.put('/clients/${widget.existing!.id}', _body());
@@ -394,7 +395,7 @@ class _ContactFormScreenState extends State<_ContactFormScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
-    final api = AppScope.of(context).api;
+    final api = AppScope.read(context).api;
     final body = {
       'full_name': _fullName.text.trim(),
       'position': _position.text.trim().isEmpty ? null : _position.text.trim(),

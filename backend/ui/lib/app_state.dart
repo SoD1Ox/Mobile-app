@@ -24,6 +24,12 @@ class AppScope extends InheritedWidget {
   static AppScope of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppScope>()!;
 
+  /// Non-subscribing lookup.  Used inside long-lived tab widgets so that a
+  /// rebuild of the scope (e.g. after user update) does not force every tab
+  /// to recreate its state.
+  static AppScope read(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<AppScope>()!;
+
   @override
   bool updateShouldNotify(AppScope oldWidget) =>
       oldWidget.user != user || oldWidget.api != api;
