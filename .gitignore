@@ -1,2 +1,6 @@
 *.bundle
 *.tar.gz
+
+# Python cache
+__pycache__/
+*.pyc
