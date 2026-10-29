@@ -42,6 +42,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         api.get('/tasks/${widget.taskId}'),
         api.get('/tasks/${widget.taskId}/comments'),
       ]);
+      if (!mounted) return;
       setState(() {
         _task = TaskItem.fromJson(results[0]);
         _comments =
