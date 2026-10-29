@@ -1,9 +1,1 @@
-*.log
-__pycache__/
-*.pyc
-.env
-backend/venv/
-ui/.dart_tool/
-ui/build/
-backend/ui/.dart_tool/
-backend/ui/build/
+*.dump
