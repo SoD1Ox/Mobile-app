@@ -180,21 +180,31 @@ ThemeData buildGlassTheme() {
   // Rationale: the ThemeData constructor parameter types were renamed
   // CardTheme -> CardThemeData and DialogTheme -> DialogThemeData in
   // Flutter 3.32+, so passing them inline breaks compilation on one of the
-  // SDK generations.  copyWith accepts *either* spelling depending on SDK:
-  //   - on >=3.32 it takes CardThemeData/DialogThemeData;
-  //   - on <3.32  it takes CardTheme/DialogTheme.
-  // On modern SDKs `CardTheme`/`DialogTheme` are deprecated typedef aliases
-  // of the *Data classes, so constructing with the legacy names type-checks
-  // everywhere.  If the analyzer/compiler rejects a name on your exact SDK,
-  // replace it with the *Data variant (CardThemeData / DialogThemeData) —
-  // both refer to the same class on 3.32+.
-  final glassCard = _buildGlassCardTheme();
-  final glassDialog = _buildGlassDialogTheme();
-  return theme.copyWith(cardTheme: glassCard, dialogTheme: glassDialog);
+  // SDK generations.  The helpers below detect at runtime which spelling the
+  // current SDK expects (copyWith's parameter type is reflected via
+  // runtimeType) and construct the matching class, so this file compiles and
+  // runs correctly on BOTH old (<3.32) and new (>=3.32) Flutter SDKs without
+  // manual edits.  Return type is dynamic on purpose.
+  // `theme.cardTheme` is always null here (we never pass it to the ctor), so
+  // `.runtimeType` would give Null and mis-detect the SDK generation.
+  // Instead we probe a freshly built default ThemeData whose card/dialog
+  // themes Flutter itself populates with the class names of THIS SDK.
+  final probe = ThemeData();
+  return theme.copyWith(
+    cardTheme: _buildGlassCardTheme(probe.cardTheme.runtimeType),
+    dialogTheme: _buildGlassDialogTheme(probe.dialogTheme.runtimeType),
+  );
 }
 
-// ignore: deprecated_member_use
-dynamic _buildGlassCardTheme() => const CardThemeData(
+// Legacy (SDK < 3.32) expects CardTheme/DialogTheme; modern (>= 3.32)
+// expects CardThemeData/DialogThemeData.  We pick the right one at runtime.
+// NOTE: both branches must be *constructible* on the compiling SDK — on
+// 3.32+ `CardTheme`/`DialogTheme` are deprecated typedef aliases of the *Data
+// classes, so referencing them still type-checks (hence the ignores below).
+dynamic _buildGlassCardTheme(Type expected) {
+  final wantsData = expected.toString().contains('Data');
+  if (wantsData) {
+    return const CardThemeData(
       color: _glassFill,
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -203,9 +213,23 @@ dynamic _buildGlassCardTheme() => const CardThemeData(
         side: BorderSide(color: _glassBorder),
       ),
     );
+  }
+  // ignore: deprecated_member_use
+  return const CardTheme(
+    color: _glassFill,
+    elevation: 0,
+    margin: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(
+      borderRadius: kGlassRadius,
+      side: BorderSide(color: _glassBorder),
+    ),
+  );
+}
 
-// ignore: deprecated_member_use
-dynamic _buildGlassDialogTheme() => DialogThemeData(
+dynamic _buildGlassDialogTheme(Type expected) {
+  final wantsData = expected.toString().contains('Data');
+  if (wantsData) {
+    return DialogThemeData(
       backgroundColor: const Color(0xF2182A4D),
       surfaceTintColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
@@ -217,6 +241,21 @@ dynamic _buildGlassDialogTheme() => DialogThemeData(
       contentTextStyle: TextStyle(
           color: Colors.white.withOpacity(0.85), fontSize: 14.5),
     );
+  }
+  // ignore: deprecated_member_use
+  return DialogTheme(
+    backgroundColor: const Color(0xF2182A4D),
+    surfaceTintColor: Colors.transparent,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(22)),
+      side: BorderSide(color: _glassBorder),
+    ),
+    titleTextStyle: const TextStyle(
+        color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700),
+    contentTextStyle: TextStyle(
+        color: Colors.white.withOpacity(0.85), fontSize: 14.5),
+  );
+}
 
 // ------------------------------------------------------------- background
 /// Deep blue gradient + soft glow blobs. `const` decorations => zero rebuild
