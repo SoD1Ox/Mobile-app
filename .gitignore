@@ -1,2 +1,1 @@
-*.bundle
-*.tar.gz
+__pycache__/
