@@ -342,7 +342,7 @@ class _GlassNavBar extends StatelessWidget {
                             size: 21,
                             color: i == index
                                 ? Colors.white
-                                : Colors.white.withValues(alpha: 0.55)),
+                                : Colors.white.withOpacity(0.55)),
                         const SizedBox(height: 3),
                         Text(destinations[i].label,
                             maxLines: 1,
@@ -355,7 +355,7 @@ class _GlassNavBar extends StatelessWidget {
                                 color: i == index
                                     ? Colors.white
                                     : Colors.white
-                                        .withValues(alpha: 0.55))),
+                                        .withOpacity(0.55))),
                       ],
                     ),
                   ),

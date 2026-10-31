@@ -65,7 +65,7 @@ class AppDropdown<T> extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: DropdownButtonFormField<T>(
-          initialValue: value,
+          value: value,
           decoration: InputDecoration(labelText: label),
           dropdownColor: const Color(0xF216294E),
           style: const TextStyle(color: Colors.white),
@@ -87,9 +87,9 @@ class StatusChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.18),
+          color: color.withOpacity(0.18),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.55)),
+          border: Border.all(color: color.withOpacity(0.55)),
         ),
         child: Text(label,
             style: TextStyle(
@@ -178,14 +178,14 @@ class GlassListCard extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withValues(alpha: 0.13),
-                Colors.white.withValues(alpha: 0.05),
+                Colors.white.withOpacity(0.13),
+                Colors.white.withOpacity(0.05),
               ],
             ),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
+                color: Colors.black.withOpacity(0.18),
                 blurRadius: 14,
                 offset: const Offset(0, 5),
               ),

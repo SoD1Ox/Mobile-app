@@ -149,12 +149,20 @@ def add_comment(
         raise _http_error(exc) from exc
 
 
-@router.delete("/comments/{comment_id}", summary="Delete a comment (manager/admin)")
+@router.delete("/comments/{comment_id}", summary="Delete a comment (author, manager or admin)")
 def delete_comment(
     comment_id: int,
-    current_user: ManagerOrAdmin,
+    current_user: CurrentUser,
     service: TaskService = Depends(get_task_service),
 ) -> dict[str, str]:
+    # RBAC: workers may only delete their own comments; managers/admins any.
+    if current_user.role.value == "worker":
+        comment = service.get_comment(comment_id)
+        if comment.author_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="A worker can only delete their own comment",
+            )
     try:
         service.delete_comment(comment_id)
         return {"status": "deleted"}

@@ -216,10 +216,10 @@ class _TasksScreenState extends State<TasksScreen> {
                               Text('#${t.tags.map((e) => e.name).join(' #')}',
                                   style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.white.withValues(alpha: 0.55))),
+                                      color: Colors.white.withOpacity(0.55))),
                             Text('~${t.estimateHours} ч',
                                 style: TextStyle(
-                                    fontSize: 12, color: Colors.white.withValues(alpha: 0.55))),
+                                    fontSize: 12, color: Colors.white.withOpacity(0.55))),
                           ],
                         ),
                       ),

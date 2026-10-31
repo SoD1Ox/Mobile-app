@@ -7,7 +7,8 @@ library;
 
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -28,18 +29,24 @@ class ApiClient {
   /// Desktop / web use 127.0.0.1 (not "localhost": on Windows browsers may
   /// resolve it to IPv6 ::1 first while uvicorn listens on IPv4 only, which
   /// makes requests hang and fail with "ClientException: Failed to fetch").
-  static const String _defaultBaseUrl = kIsWeb
-      ? 'http://127.0.0.1:8000/api/v1'
-      : defaultTargetPlatform == TargetPlatform.android
-          // Android emulator reaches the host PC through this alias.
-          ? 'http://10.0.2.2:8000/api/v1'
-          // Windows / macOS / Linux desktop and iOS run next to the backend.
-          : 'http://127.0.0.1:8000/api/v1';
+  /// Resolved at runtime (not `const`): `kIsWeb` and `defaultTargetPlatform`
+  /// are compile-time *values*, not constant expressions in Dart, so a
+  /// `const` ternary on them fails compilation ("Not a constant expression").
+  static String get _defaultBaseUrl {
+    if (kIsWeb) return 'http://127.0.0.1:8000/api/v1';
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      // Android emulator reaches the host PC through this alias.
+      return 'http://10.0.2.2:8000/api/v1';
+    }
+    // Windows / macOS / Linux desktop and iOS run next to the backend.
+    return 'http://127.0.0.1:8000/api/v1';
+  }
 
-  static const String baseUrl = String.fromEnvironment(
+  static final String baseUrl = const String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: _defaultBaseUrl,
-  );
+  ).isNotEmpty
+      ? const String.fromEnvironment('API_BASE_URL')
+      : _defaultBaseUrl;
 
   String? _accessToken;
   String? _refreshToken;
