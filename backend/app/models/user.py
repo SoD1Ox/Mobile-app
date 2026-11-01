@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Enum as SAEnum, String
+from sqlalchemy import Boolean, Enum as SAEnum, Float, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -38,6 +38,9 @@ class User(TimestampMixin, Base):
         SAEnum(UserRole, name="user_role", values_callable=lambda e: [m.value for m in e]), nullable=False, default=UserRole.WORKER
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Self-learning stat: moving average of funnel completion (0..1) over all
+    # applications assigned to this user.  Updated on every status change.
+    completion_score: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # A recruiter (manager) is responsible for many applications
     applications: Mapped[list["Application"]] = relationship(

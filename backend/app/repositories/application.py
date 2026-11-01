@@ -13,8 +13,14 @@ from sqlalchemy import func, select
 from app.db.vis import Vis
 from app.dto.application import ApplicationCreate, ApplicationRead, ApplicationUpdate
 from app.dto.common import Page, PageParams
-from app.models.application import Application, ApplicationStatus
+from app.models.application import STATUS_SCORE, Application, ApplicationStatus
 from app.repositories.base import BaseRepository
+
+
+def _utcnow() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
 
 
 class ApplicationRepository(
@@ -77,8 +83,20 @@ class ApplicationRepository(
             obj = session.get(Application, entity_id)
             if obj is None:
                 return None
-            for field, value in data.model_dump(exclude_unset=True).items():
+            payload = data.model_dump(exclude_unset=True)
+            new_status = payload.pop("status", None)
+            for field, value in payload.items():
                 setattr(obj, field, value)
+            if new_status is not None and new_status != obj.status:
+                # --- audit trail + self-learning funnel score -------------
+                old = obj.status.value if hasattr(obj.status, "value") else str(obj.status)
+                new = new_status.value if hasattr(new_status, "value") else str(new_status)
+                actor = obj.assigned_worker_id or obj.manager_id
+                entry = f"{old} -> {new} (by {actor or 'system'} @ {_utcnow()})"
+                obj.prev_status = old
+                obj.status_history = ((obj.status_history or "") + "\n" + entry).lstrip("\n")
+                obj.completion_score = STATUS_SCORE[new_status]
+                obj.status = new_status
             session.commit()
             session.refresh(obj)
             return self._enrich(session, obj)

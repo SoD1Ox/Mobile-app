@@ -6,7 +6,10 @@ service layer and translate domain errors into HTTP responses.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import time
+from collections import defaultdict, deque
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
 from app.api.dependencies.auth import CurrentUser
@@ -29,6 +32,34 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+# ---------------------------------------------------------------- rate limit
+# Simple in-memory sliding-window limiter for the login endpoint: protects
+# password hashing (bcrypt is intentionally slow) from brute-force storms.
+_LOGIN_WINDOW_SECONDS = 60
+_LOGIN_MAX_ATTEMPTS = 5
+_login_attempts: dict[str, deque[float]] = defaultdict(deque)
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _check_login_rate(ip: str) -> None:
+    now = time.monotonic()
+    bucket = _login_attempts[ip]
+    while bucket and now - bucket[0] > _LOGIN_WINDOW_SECONDS:
+        bucket.popleft()
+    if len(bucket) >= _LOGIN_MAX_ATTEMPTS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Слишком много попыток входа. Подождите минуту и попробуйте снова.",
+        )
+    bucket.append(now)
+
+
 @router.post(
     "/register",
     response_model=TokenPair,
@@ -43,7 +74,12 @@ def register(data: UserRegister, service: UserService = Depends(get_user_service
 
 
 @router.post("/login", response_model=TokenPair, summary="Obtain JWT access+refresh pair")
-def login(data: UserLogin, service: UserService = Depends(get_user_service)) -> TokenPair:
+def login(
+    data: UserLogin,
+    request: Request,
+    service: UserService = Depends(get_user_service),
+) -> TokenPair:
+    _check_login_rate(_client_ip(request))
     try:
         return service.login(data.username, data.password)
     except AuthenticationError as exc:

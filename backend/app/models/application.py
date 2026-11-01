@@ -18,7 +18,7 @@ from sqlalchemy import Enum as SAEnum, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.mixins import TimestampMixin
+from app.models.mixins import StatusHistoryMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.candidate import Candidate
@@ -35,7 +35,20 @@ class ApplicationStatus(str, enum.Enum):
     REJECTED = "rejected"          # отказ
 
 
-class Application(TimestampMixin, Base):
+# Funnel weights used for the self-learning "completion score": every stage
+# contributes a fraction of 1.0; rejected zeroes it out.  The moving average
+# per recruiter (users.completion_score) shows who converts candidates best.
+STATUS_SCORE: dict["ApplicationStatus", float] = {
+    ApplicationStatus.NEW: 0.10,
+    ApplicationStatus.REVIEW: 0.30,
+    ApplicationStatus.INTERVIEW: 0.55,
+    ApplicationStatus.OFFER: 0.80,
+    ApplicationStatus.HIRED: 1.00,
+    ApplicationStatus.REJECTED: 0.00,
+}
+
+
+class Application(TimestampMixin, StatusHistoryMixin, Base):
     __tablename__ = "applications"
     __table_args__ = (
         # a candidate can apply to the same vacancy only once

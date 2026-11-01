@@ -39,6 +39,11 @@ class ApplicationRead(BaseModel):
     vacancy_id: int
     manager_id: int | None
     assigned_worker_id: int | None
+    # Audit trail of pipeline moves ("new -> review (by 2 @ 2026-11-01T14:03)")
+    prev_status: str | None = None
+    status_history: list[str] = Field(default_factory=list)
+    # Funnel completion fraction 0..1 (self-learning stat)
+    completion_score: float | None = None
     # Denormalized display fields resolved from ORM relationships
     # (candidate/vacancy/company/users). Optional so the DTO stays usable
     # even when a session cannot hydrate the relations.

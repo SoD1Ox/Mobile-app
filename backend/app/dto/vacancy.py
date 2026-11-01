@@ -46,6 +46,9 @@ class VacancyRead(BaseModel):
     remote: bool
     company_id: int
     skills: list[SkillRead] = Field(default_factory=list)
+    # Self-learning stats (filled by the service layer from application funnel)
+    completion_score: float | None = None
+    status_history: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

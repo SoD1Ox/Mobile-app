@@ -55,6 +55,7 @@ class UserRead(BaseModel):
     full_name: str
     role: UserRole
     is_active: bool
+    completion_score: float | None = None
     created_at: datetime
     updated_at: datetime
 
