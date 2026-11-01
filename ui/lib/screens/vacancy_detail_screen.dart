@@ -1,4 +1,5 @@
-/// Vacancy detail screen: full info + skills + applications pipeline.
+/// Vacancy detail screen — hero `RealGlassCard` (true BackdropFilter blur),
+/// full CRUD entry points and the vacancy's application funnel.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,9 +22,9 @@ class VacancyDetailScreen extends StatefulWidget {
 }
 
 class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
-  VacancyItem? _vacancy;
-  String _companyName = '';
-  int _appCount = 0;
+  Map<String, dynamic>? _vacancy;
+  CompanyItem? _company;
+  Map<String, int> _funnel = {};
   bool _loading = true;
 
   @override
@@ -33,25 +34,29 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    final api = AppScope.read(context).api;
     try {
-      final api = AppScope.read(context).api;
-      final results = await Future.wait([
-        api.get('/vacancies/${widget.vacancyId}'),
-        api.get('/applications',
-            {'vacancy_id': widget.vacancyId, 'page_size': 1}),
-      ]);
-      final v = VacancyItem.fromJson(Map<String, dynamic>.from(results[0] as Map));
-      String cname = '';
+      final v = await api.get('/vacancies/${widget.vacancyId}')
+          as Map<String, dynamic>;
+      Object? company;
       try {
-        final c = await api.get('/companies/${v.companyId}');
-        cname = (c as Map)['name'] as String? ?? '';
+        company = await api.get('/companies/${v['company_id']}');
       } catch (_) {/* company may be deleted */}
+      final counts = <String, int>{};
+      for (final s in ApplicationItem.pipelineOrder) {
+        try {
+          final raw = await api
+              .get('/applications', {'vacancy_id': v['id'], 'status': s, 'page_size': 1});
+          counts[s] = raw['total'] as int;
+        } catch (_) {
+          counts[s] = 0;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _vacancy = v;
-        _companyName = cname;
-        _appCount = results[1]['total'] as int? ?? 0;
+        _company = company == null ? null : CompanyItem.fromJson(company as Map<String, dynamic>);
+        _funnel = counts;
         _loading = false;
       });
     } catch (e) {
@@ -61,158 +66,168 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
     }
   }
 
+  Future<void> _edit() async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+          builder: (_) => VacancyFormScreen(existing: VacancyItem.fromJson(_vacancy!))),
+    );
+    if (changed == true) _load();
+  }
+
   Future<void> _delete() async {
-    final yes = await confirmDialog(context, 'Удалить вакансию?',
-        'Вместе с ней будут удалены все отклики.');
-    if (!yes || !mounted) return;
-    final ok = await runGuarded(context, () async {
-      await AppScope.read(context).api.delete('/vacancies/${widget.vacancyId}');
-    });
-    if (ok && mounted) Navigator.pop(context, true);
+    final ok = await confirmDialog(context, 'Удалить вакансию?',
+        'Вакансия «${_vacancy!['title']}» и все её отклики будут удалены.');
+    if (!ok) return;
+    final api = AppScope.read(context).api;
+    final done = await runGuarded(context, () => api.delete('/vacancies/${widget.vacancyId}'));
+    if (done && mounted) Navigator.pop(context, true);
   }
 
   @override
   Widget build(BuildContext context) {
     final user = AppScope.read(context).user;
-    final v = _vacancy;
+    if (_loading) return const Scaffold(body: LoadingView());
+    final v = _vacancy!;
+    final item = VacancyItem.fromJson(v);
+    final skills = ((v['skills'] as List?) ?? [])
+        .map((e) => SkillItem.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(v?.title ?? 'Вакансия'),
-        actions: [
-          if (v != null && (user?.canManage ?? false)) ...[
-            GlassIconButton(Glyph.edit,
-                onPressed: () async {
-                  final changed = await Navigator.push<bool>(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => VacancyFormScreen(existing: v)),
-                  );
-                  if (changed == true) _load();
-                }),
-            GlassIconButton(Glyph.delete, onPressed: _delete),
-          ],
-        ],
-      ),
-      body: _loading
-          ? const LoadingView()
-          : v == null
-              ? const Center(child: Text('Вакансия не найдена'))
-              : ListView(
-                  padding: const EdgeInsets.all(14),
+      appBar: AppBar(title: Text(item.title, overflow: TextOverflow.ellipsis)),
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 24),
+        children: [
+          RealGlassCard(
+            blur: 22,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    // Hero card — REAL glass (single BackdropFilter)
-                    RealGlassCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(v.title,
-                                      style: const TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w800)),
-                                ),
-                                if (v.remote)
-                                  const StatusChip(
-                                      label: 'Удалённо',
-                                      color: const Color(0xFF5BC8E8)),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                const GlassIcon(Glyph.money, size: 17),
-                                const SizedBox(width: 6),
-                                Text(v.salaryLabel,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF3ED9B8))),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            _row(Glyph.building,
-                                _companyName.isEmpty ? 'Компания удалена' : _companyName),
-                            if (v.city != null)
-                              _row(Glyph.pin, v.city!),
-                            _row(Glyph.people, '$_appCount откликов'),
-                          ],
-                        ),
-                      ),
+                    Expanded(
+                      child: Text(item.title,
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                     ),
-                    const SizedBox(height: 12),
-                    if (v.skills.isNotEmpty) ...[
-                      GlassListCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Навыки',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 6,
-                                children: [
-                                  for (final s in v.skills)
-                                    StatusChip(
-                                        label: s.name, color: kAccentColor),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                    if (item.remote)
+                      const StatusChip(label: 'Удалённо', color: Color(0xFF26C6DA)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 14,
+                  runSpacing: 8,
+                  children: [
+                    _meta(Glyph.money, item.salaryLabel,
+                        color: const Color(0xFF8CE99A)),
+                    if (item.city != null) _meta(Glyph.pin, item.city!),
+                    if (_company != null) _meta(Glyph.building, _company!.name),
+                    _meta(Glyph.list, '${_funnel.values.fold<int>(0, (a, b) => a + b)} откликов'),
+                  ],
+                ),
+                if (skills.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final s in skills)
+                        StatusChip(label: s.name, color: const Color(0xFF7986CB)),
                     ],
-                    if ((v.description ?? '').isNotEmpty)
-                      GlassListCard(
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Описание',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 8),
-                              Text(v.description!,
-                                  style: const TextStyle(height: 1.45)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
+                  ),
+                ],
+              ],
+            ),
+          ),
+          RealGlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Описание вакансии',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                Text(
+                  (v['description'] as String?)?.trim().isNotEmpty == true
+                      ? v['description']
+                      : 'Описание пока не заполнено.',
+                  style: TextStyle(
+                      height: 1.45, color: Colors.white.withOpacity(0.85)),
+                ),
+                const SizedBox(height: 10),
+                Text('Обновлена: ${_fmtDate(item.updatedAt)}',
+                    style: TextStyle(
+                        fontSize: 12, color: Colors.white.withOpacity(0.5))),
+              ],
+            ),
+          ),
+          if (_funnel.isNotEmpty)
+            RealGlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Воронка по вакансии',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 10),
+                  FunnelBars(counts: _funnel),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) =>
-                                ApplicationsScreen(vacancyId: v.id)),
+                            builder: (_) => ApplicationsScreen(vacancyId: item.id)),
                       ),
                       icon: const GlassIcon(Glyph.kanban, size: 18),
-                      label: Text('Отклики (${_appCount})'),
+                      label: const Text('Открыть отклики'),
                     ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+            ),
+          if (user?.canManage ?? false)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _edit,
+                      icon: const GlassIcon(Glyph.edit, size: 18),
+                      label: const Text('Редактировать'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFEF5350)),
+                      onPressed: _delete,
+                      icon: const GlassIcon(Glyph.delete, size: 18),
+                      label: const Text('Удалить'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _row(Glyph g, String text) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          children: [
-            GlassIcon(g, size: 16),
-            const SizedBox(width: 8),
-            Expanded(
-                child: Text(text,
-                    style: TextStyle(color: Colors.white.withOpacity(0.85)))),
-          ],
-        ),
+  Widget _meta(Glyph g, String text, {Color? color}) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GlassIcon(g, size: 16),
+          const SizedBox(width: 5),
+          Text(text,
+              style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: color ?? Colors.white.withOpacity(0.8))),
+        ],
       );
+
+  static String _fmtDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 }

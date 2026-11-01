@@ -1,11 +1,11 @@
-/// Candidate card: contacts, applications history and recruiter notes.
+/// Candidate card: contact info, hiring history (applications) and the
+/// recruiter comment thread (GET/POST /candidates/{id}/comments).
 library;
 
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../models/models.dart';
-import '../theme/glass.dart';
 import '../theme/glass_stack.dart';
 import '../widgets/common.dart';
 import '../widgets/glass_icons.dart';
@@ -20,11 +20,12 @@ class CandidateDetailScreen extends StatefulWidget {
 }
 
 class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
+  final _commentController = TextEditingController();
+
   CandidateItem? _candidate;
-  List<ApplicationItem> _applications = [];
   List<CommentItem> _comments = [];
-  final Map<int, String> _vacancyTitles = {};
-  final _noteController = TextEditingController();
+  List<ApplicationItem> _applications = [];
+  Map<int, String> _vacancyTitles = {};
   bool _loading = true;
   bool _sending = false;
 
@@ -36,45 +37,39 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
 
   @override
   void dispose() {
-    _noteController.dispose();
+    _commentController.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    final api = AppScope.read(context).api;
     try {
-      final api = AppScope.read(context).api;
-      final results = await Future.wait([
-        api.get('/candidates/${widget.candidateId}'),
-        api.get('/applications',
-            {'candidate_id': widget.candidateId, 'page_size': 100}),
-        api.get('/candidates/${widget.candidateId}/comments'),
-      ]);
-      final c =
-          CandidateItem.fromJson(Map<String, dynamic>.from(results[0] as Map));
-      final apps = DataPage.fromJson(results[1], ApplicationItem.fromJson).items;
-      final comments = (results[2] as List)
-          .map((e) => CommentItem.fromJson(Map<String, dynamic>.from(e as Map)))
-          .toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      // Resolve vacancy titles for the pipeline list (small N, cached).
-      final titles = <int, String>{..._vacancyTitles};
-      for (final a in apps) {
-        if (!titles.containsKey(a.vacancyId)) {
-          try {
-            final v = await api.get('/vacancies/${a.vacancyId}');
-            titles[a.vacancyId] = (v as Map)['title'] as String? ?? '—';
-          } catch (_) {
-            titles[a.vacancyId] = 'Вакансия удалена';
-          }
+      final c = await api.get('/candidates/${widget.candidateId}')
+          as Map<String, dynamic>;
+      final commentsRaw =
+          await api.get('/candidates/${widget.candidateId}/comments');
+      final appsRaw =
+          await api.get('/applications', {'candidate_id': c['id'], 'page_size': 100});
+      final apps = DataPage.fromJson(appsRaw as Map<String, dynamic>, ApplicationItem.fromJson)
+          .items;
+      // Resolve vacancy titles for the history list (small N — sequential is fine).
+      final titles = <int, String>{};
+      for (final a in apps.toSet().map((e) => e.vacancyId)) {
+        try {
+          final v = await api.get('/vacancies/$a') as Map<String, dynamic>;
+          titles[a] = v['title'] as String;
+        } catch (_) {
+          titles[a] = 'Вакансия #$a';
         }
       }
       if (!mounted) return;
       setState(() {
-        _candidate = c;
+        _candidate = CandidateItem.fromJson(c);
+        _comments = ((commentsRaw as List?) ?? [])
+            .map((e) => CommentItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
         _applications = apps;
-        _comments = comments;
-        _vacancyTitles.addAll(titles);
+        _vacancyTitles = titles;
         _loading = false;
       });
     } catch (e) {
@@ -84,191 +79,172 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
     }
   }
 
-  Future<void> _delete() async {
-    final yes = await confirmDialog(context, 'Удалить кандидата?',
-        'Все его отклики и заметки будут удалены.');
-    if (!yes || !mounted) return;
-    final ok = await runGuarded(
-        context, () => AppScope.read(context).api.delete('/candidates/${widget.candidateId}'));
-    if (ok && mounted) Navigator.pop(context, true);
+  Future<void> _sendComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+    final api = AppScope.read(context).api;
+    setState(() => _sending = true);
+    try {
+      await api.post('/candidates/${widget.candidateId}/comments',
+          {'text': text, 'candidate_id': widget.candidateId});
+      _commentController.clear();
+      FocusScope.of(context).unfocus();
+      await _load();
+    } catch (e) {
+      if (mounted) showError(context, e);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
-  Future<void> _addNote() async {
-    final text = _noteController.text.trim();
-    if (text.isEmpty) return;
-    setState(() => _sending = true);
-    final ok = await runGuarded(context, () async {
-      await AppScope.read(context).api.post(
-          '/candidates/${widget.candidateId}/comments', {'text': text});
-    });
-    if (!mounted) return;
-    setState(() => _sending = false);
-    if (ok) {
-      _noteController.clear();
-      _load();
-    }
+  Future<void> _edit() async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+          builder: (_) => CandidateFormScreen(existing: _candidate)),
+    );
+    if (changed == true) _load();
+  }
+
+  Future<void> _delete() async {
+    final ok = await confirmDialog(
+        context,
+        'Удалить кандидата?',
+        'Карточка «${_candidate!.fullName}», её комментарии и отклики будут удалены.');
+    if (!ok) return;
+    final api = AppScope.read(context).api;
+    final done =
+        await runGuarded(context, () => api.delete('/candidates/${widget.candidateId}'));
+    if (done && mounted) Navigator.pop(context, true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = AppScope.read(context).user;
-    final c = _candidate;
+    if (_loading) return const Scaffold(body: LoadingView());
+    final c = _candidate!;
     return Scaffold(
       appBar: AppBar(
-        title: Text(c?.fullName ?? 'Кандидат'),
+        title: Text(c.fullName, overflow: TextOverflow.ellipsis),
         actions: [
-          if (c != null && (user?.canManage ?? false))
-            GlassIconButton(Glyph.edit,
-                onPressed: () async {
-                  final changed = await Navigator.push<bool>(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => CandidateFormScreen(existing: c)),
-                  );
-                  if (changed == true) _load();
-                }),
-          if (c != null && (user?.isAdmin ?? false))
-            GlassIconButton(Glyph.delete, onPressed: _delete),
+          GlassIconButton(Glyph.edit, onPressed: _edit, tooltip: 'Редактировать'),
+          GlassIconButton(Glyph.delete, onPressed: _delete, tooltip: 'Удалить'),
+          const SizedBox(width: 4),
         ],
       ),
-      body: _loading
-          ? const LoadingView()
-          : c == null
-              ? const Center(child: Text('Кандидат не найден'))
-              : ListView(
-                  padding: const EdgeInsets.all(14),
-                  children: [
-                    RealGlassCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 26,
-                                backgroundColor: kAccentColor.withOpacity(0.3),
-                                child: Text(c.fullName.characters.first.toUpperCase(),
-                                    style: const TextStyle(
-                                        fontSize: 22, fontWeight: FontWeight.w800)),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(c.fullName,
-                                        style: const TextStyle(
-                                            fontSize: 19, fontWeight: FontWeight.w800)),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                        '${c.specialization ?? 'Без специализации'} · ${c.expLabel}',
-                                        style: TextStyle(
-                                            color: Colors.white.withOpacity(0.75))),
-                                  ],
-                                ),
-                              ),
-                            ],
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 24),
+        children: [
+          RealGlassCard(
+            blur: 22,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(c.fullName,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                Text(
+                  '${c.specialization ?? 'Без специализации'} · ${c.expLabel}'
+                  '${c.city != null ? ' · ${c.city}' : ''}',
+                  style: TextStyle(color: Colors.white.withOpacity(0.75)),
+                ),
+                const SizedBox(height: 12),
+                _row(Glyph.mail, c.email ?? 'Email не указан'),
+                _row(Glyph.phone, c.phone ?? 'Телефон не указан'),
+                if (c.resumeUrl != null && c.resumeUrl!.isNotEmpty)
+                  _row(Glyph.resume, c.resumeUrl!),
+                _row(Glyph.person, 'В базе с ${_fmtDate(c.createdAt)}'),
+              ],
+            ),
+          ),
+          RealGlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('История откликов',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                if (_applications.isEmpty)
+                  Text('Кандидат ещё не откликался на вакансии.',
+                      style: TextStyle(color: Colors.white.withOpacity(0.6))),
+                for (final a in _applications)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _vacancyTitles[a.vacancyId] ?? 'Вакансия #${a.vacancyId}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 12),
-                          if (c.email != null) _row(Glyph.mail, c.email!),
-                          if (c.phone != null) _row(Glyph.phone, c.phone!),
-                          if (c.city != null) _row(Glyph.pin, c.city!),
-                          if (c.resumeUrl != null) _row(Glyph.resume, c.resumeUrl!),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 8),
+                        StatusChip(
+                            label: a.statusLabel, color: statusColor(a.status)),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    GlassListCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Отклики (${_applications.length})',
-                                style: const TextStyle(fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 8),
-                            if (_applications.isEmpty)
-                              Text('Пока нет откликов',
-                                  style: TextStyle(color: Colors.white.withOpacity(0.5)))
-                            else
-                              for (final a in _applications)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                            _vacancyTitles[a.vacancyId] ?? '…',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis),
-                                      ),
-                                      StatusChip(
-                                          label: a.statusLabel,
-                                          color: statusColor(a.status)),
-                                    ],
-                                  ),
-                                ),
-                          ],
+                  ),
+              ],
+            ),
+          ),
+          RealGlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Заметки рекрутеров',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                if (_comments.isEmpty)
+                  Text('Пока нет заметок по кандидату.',
+                      style: TextStyle(color: Colors.white.withOpacity(0.6))),
+                for (final cm in _comments)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(cm.text, style: const TextStyle(height: 1.35)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${cm.authorName ?? 'Рекрутер'} · ${_fmtDate(cm.createdAt)}',
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.white.withOpacity(0.45)),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _commentController,
+                        minLines: 1,
+                        maxLines: 3,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          hintText: 'Добавить заметку…',
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    GlassListCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Заметки рекрутеров (${_comments.length})',
-                                style: const TextStyle(fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 8),
-                            for (final cm in _comments)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(cm.text, style: const TextStyle(height: 1.4)),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                        '${cm.authorName ?? 'Сотрудник'} · ${_fmtDate(cm.createdAt)}',
-                                        style: TextStyle(
-                                            fontSize: 11.5,
-                                            color: Colors.white.withOpacity(0.45))),
-                                  ],
-                                ),
-                              ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _noteController,
-                                    minLines: 1,
-                                    maxLines: 3,
-                                    style: const TextStyle(color: Colors.white),
-                                    decoration: const InputDecoration(
-                                        hintText: 'Новая заметка…'),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                GlassIconButton(Glyph.send,
-                                    size: 20,
-                                    onPressed: _sending ? null : _addNote),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+                    const SizedBox(width: 8),
+                    _sending
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : GlassIconButton(Glyph.send,
+                            onPressed: _sendComment, tooltip: 'Отправить'),
                   ],
                 ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
-
-  static String _fmtDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 
   Widget _row(Glyph g, String text) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
@@ -277,9 +253,12 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
             GlassIcon(g, size: 16),
             const SizedBox(width: 8),
             Expanded(
-                child: SelectableText(text,
+                child: Text(text,
                     style: TextStyle(color: Colors.white.withOpacity(0.85)))),
           ],
         ),
       );
+
+  static String _fmtDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 }
