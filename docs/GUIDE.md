@@ -179,3 +179,48 @@ New-NetFirewallRule -DisplayName "Allow uvicorn 8000" -Direction Inbound -Action
 | Activate.ps1: running scripts is disabled | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (шаг 6). |
 | Failed to fetch при входе | uvicorn не запущен; браузер резолвит localhost в IPv6 (в UI используется 127.0.0.1); блокировщик/tracking protection в браузере; Cloudflare WARP перехватывает трафик. |
 | flutter: команда не найдена | Установите Flutter SDK, распакуйте (например C:\src\flutter), добавьте `bin` в PATH, перезапустите PowerShell. |
+
+
+## Типовые ошибки при запуске (решения)
+
+### 1. `alembic: Multiple head revisions are present`
+В локальной папке остались старые файлы миграций от прежних версий проекта.
+**Решение:** в свежем коде Alembic теперь чистит дубликаты автоматически (`backend/alembic/env.py`).
+Но если ошибка осталась — удалите вручную лишние `.py` из `backend\alembic\versions\`
+(должен остаться только `a1f2c3d4e5b6_agency_schema.py`) и папку `__pycache__` рядом.
+
+### 2. `relation "users" does not exist` при seed или логине
+Миграции не применились к той базе, на которую указывает `.env`.
+**Решение:** убедитесь, что в `backend\.env` указаны правильные `DB_PORT=1616`,
+`DB_NAME=mobile_app`, `DB_USER=app_user`, `DB_PASSWORD=<твой пароль app_user>`.
+Команда `python -m scripts.seed --force` теперь сама создаёт схему, если таблиц нет
+(самолечение), поэтому достаточно просто запустить её ещё раз.
+
+### 3. `password authentication failed for user "app_user"`
+Пароль в `.env` не совпадает с паролем роли в PostgreSQL. Сбросьте пароль:
+```powershell
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 1616 -U postgres
+```
+```sql
+ALTER ROLE app_user WITH PASSWORD 'app_pass_2026';
+GRANT ALL PRIVILEGES ON DATABASE mobile_app TO app_user;
+```
+И пропишите тот же пароль в `backend\.env`.
+
+### 4. `Failed to compile ... CardTheme can't be assigned to CardThemeData`
+Это старый код UI из архива «Mobile-app-main» (до переименования пакета).
+В актуальном `main` проблема решена кросс-версионным probe-подходом.
+**Решение:** клонируйте репозиторий заново, UI лежит в корне `ui\` (не `backend\ui\`).
+
+### 5. `ClientException: Failed to fetch` при входе
+Сервер uvicorn не запущен или недоступен. Проверьте:
+1) `http://127.0.0.1:8000/docs` открывается в браузере;
+2) uvicorn запущен из папки `backend`;
+3) приложение открыто по адресу `http://127.0.0.1:...` (не `localhost` и не file://).
+
+### 6. Команды alembic/seed запускаются НЕ из backend
+`No 'script_location' key found in configuration` — значит вы не в той папке.
+Все команды бэкенда выполняются из `backend\`:
+```powershell
+cd C:\Users\SoD1Ox\Documents\Mobile-app\backend
+```
