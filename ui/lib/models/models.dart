@@ -152,6 +152,10 @@ class ApplicationItem {
   final double? salaryFrom;
   final double? salaryTo;
   final String? assignedWorkerName;
+  // Audit trail: "new -> review (by 2 @ 2026-11-01T14:03+00:00)" lines.
+  final List<String> statusHistory;
+  // Funnel completion fraction 0..1 (self-learning stat).
+  final double? completionScore;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -168,8 +172,43 @@ class ApplicationItem {
         salaryFrom = (j['salary_from'] as num?)?.toDouble(),
         salaryTo = (j['salary_to'] as num?)?.toDouble(),
         assignedWorkerName = j['assigned_worker_name'] as String?,
+        statusHistory =
+            (j['status_history'] as List?)?.map((e) => e.toString()).toList() ??
+                const [],
+        completionScore = (j['completion_score'] as num?)?.toDouble(),
         createdAt = DateTime.parse(j['created_at']),
         updatedAt = DateTime.parse(j['updated_at']);
+
+  /// Human-readable pipeline timeline for the detail screen.
+  static const _stageShort = {
+    'new': 'Отклик',
+    'review': 'Рассмотрение',
+    'interview': 'Интервью',
+    'offer': 'Оффер',
+    'hired': 'Трудоустроен',
+    'rejected': 'Отказ',
+  };
+
+  /// Parsed history entries: (fromLabel, toLabel, rawStamp) oldest first.
+  List<(String, String, String)> get timeline {
+    final out = <(String, String, String)>[];
+    for (final line in statusHistory) {
+      // format: "a -> b (by N @ ts)"
+      final arrow = line.indexOf('->');
+      if (arrow == -1) continue;
+      final from = line.substring(0, arrow).trim();
+      var rest = line.substring(arrow + 2).trim();
+      final paren = rest.indexOf('(');
+      final to = (paren == -1 ? rest : rest.substring(0, paren)).trim();
+      final stamp = paren == -1 ? '' : rest.substring(paren + 1, rest.length - (rest.endsWith(')') ? 1 : 0));
+      out.add((
+        _stageShort[from] ?? from,
+        _stageShort[to] ?? to,
+        stamp.replaceAll(RegExp(r'\(by \d+ @ '), '').replaceAll(')', ''),
+      ));
+    }
+    return out;
+  }
 
   /// Salary shown on the card — always "per month".
   String get salaryLabel {

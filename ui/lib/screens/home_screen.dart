@@ -79,11 +79,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ]);
       if (!mounted) return;
       setState(() {
-        _vacancyCount = results[0]['total'];
-        _candidateCount = (results[1] as Map?)?['total'];
-        _newAppCount = user.canManage ? (results[2] as Map?)?['total'] : null;
-        _hiredCount = (results[3] as Map?)?['total'];
-        _myCaseCount = results[4]['total'];
+        _vacancyCount = (results[0] as Map?)?['total'] as int?;
+        _candidateCount = (results[1] as Map?)?['total'] as int?;
+        _newAppCount = (results[2] as Map?)?['total'] as int?;
+        _hiredCount = (results[3] as Map?)?['total'] as int?;
+        _myCaseCount = (results[4] as Map?)?['total'] as int?;
         _statsLoading = false;
       });
     } catch (e) {

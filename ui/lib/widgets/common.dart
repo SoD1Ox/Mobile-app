@@ -169,12 +169,15 @@ class LoadingView extends StatelessWidget {
 class GlassListCard extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
-  const GlassListCard({super.key, required this.child, this.onTap});
+  const GlassListCard(
+      {super.key, required this.child, this.onTap, this.onLongPress});
 
   @override
   Widget build(BuildContext context) {
-    final inner = _glassDecorated(child: child, onTap: onTap);
+    final inner = _glassDecorated(
+        child: child, onTap: onTap, onLongPress: onLongPress);
     if (kIsWeb) return inner;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -190,7 +193,10 @@ class GlassListCard extends StatelessWidget {
 }
 
 /// Shared frosted decoration used by [GlassListCard] (and web fallback).
-Widget _glassDecorated({required Widget child, VoidCallback? onTap}) =>
+Widget _glassDecorated(
+        {required Widget child,
+        VoidCallback? onTap,
+        VoidCallback? onLongPress}) =>
     DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: kGlassRadius,
@@ -215,6 +221,7 @@ Widget _glassDecorated({required Widget child, VoidCallback? onTap}) =>
         type: MaterialType.transparency,
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           borderRadius: kGlassRadius,
           child: child,
         ),

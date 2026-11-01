@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../theme/glass.dart';
+import '../theme/glass_stack.dart';
 import '../widgets/common.dart';
 import '../widgets/glass_icons.dart';
 import 'candidate_detail_screen.dart';
@@ -231,7 +232,8 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: GlassListCard(
-        onTap: preview
+        onTap: preview ? null : () => _showTimeline(a),
+        onLongPress: preview
             ? null
             : () => Navigator.push(
                   context,
@@ -275,10 +277,102 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 ],
               ),
               const SizedBox(height: 6),
-              Text(_fmtDate(a.createdAt),
-                  style:
-                      TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.4))),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(_fmtDate(a.createdAt),
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.white.withOpacity(0.4))),
+                  ),
+                  if (a.completionScore != null &&
+                      a.completionScore! > 0) ...[
+                    const GlassIcon(Glyph.chart, size: 13),
+                    const SizedBox(width: 4),
+                    Text('${(a.completionScore! * 100).round()}%',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: kAccentColor)),
+                  ],
+                ],
+              ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Bottom sheet with the full audit timeline of one application.
+  void _showTimeline(ApplicationItem a) {
+    final tl = a.timeline;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: GlassPanel(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('История кейса · ${_candidateNames[a.candidateId] ?? ''}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(a.vacancyTitle ?? '',
+                    style: TextStyle(
+                        fontSize: 12, color: Colors.white.withOpacity(0.6))),
+                const SizedBox(height: 12),
+                if (tl.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text('Перемещений статуса ещё не было.',
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.55))),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: tl.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) {
+                        final (from, to, stamp) = tl[i];
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.circle,
+                                size: 10, color: kAccentColor.withOpacity(0.9)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('$from → $to',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13)),
+                                  if (stamp.isNotEmpty)
+                                    Text(stamp,
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color:
+                                                Colors.white.withOpacity(0.45))),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

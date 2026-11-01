@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import '../theme/glass.dart';
 import '../widgets/common.dart';
 import '../widgets/glass_icons.dart';
 
@@ -98,14 +99,28 @@ class _UsersScreenState extends State<UsersScreen> {
                     subtitle: Text(
                         '@${u['username']} · ${u['email']}\n${_roleLabels[role] ?? role}'
                         '${u['is_active'] == false ? ' · неактивен' : ''}'),
-                    isThreeLine: true,
-                    trailing: isMe
-                        ? const Tooltip(
-                            message: 'Это вы',
-                            child: Padding(
-                                padding: EdgeInsets.all(8),
-                                child: GlassIcon(Glyph.person, size: 20)))
-                        : Wrap(spacing: 4, children: [
+                    trailing: Wrap(
+                      spacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if ((u['completion_score'] as num?) != null &&
+                            role != 'worker') ...[
+                          const GlassIcon(Glyph.chart, size: 14),
+                          Text(
+                              '${(((u['completion_score'] as num).toDouble()) * 100).round()}%',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: kAccentColor)),
+                        ],
+                        if (isMe)
+                          const Tooltip(
+                              message: 'Это вы',
+                              child: Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: GlassIcon(Glyph.person, size: 20)))
+                        else
+                          Wrap(spacing: 4, children: [
                             GlassIconButton(Glyph.edit,
                                 tooltip: 'Редактировать',
                                 onPressed: () => _openForm(existing: u)),
@@ -114,6 +129,8 @@ class _UsersScreenState extends State<UsersScreen> {
                                 color: const Color(0xFFF16A6A),
                                 onPressed: () => _delete(u)),
                           ]),
+                      ],
+                    ),
                   ),
                 );
               },
