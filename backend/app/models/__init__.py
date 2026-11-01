@@ -3,32 +3,34 @@
 Importing this module registers **all** mappers on ``Base.metadata`` — used by
 Alembic autogenerate and by ``create_all`` in tests/seed scripts.
 
-Database layout (7 tables + 1 association table, >= 5 relations):
-    users, clients, projects, tasks, tags, contacts, comments, task_tags
+Database layout of the staffing agency (7 tables + 1 association table):
+    users, companies, vacancies, candidates, applications, skills, contacts,
+    comments, vacancy_skills
 """
 
 from app.db.base import Base
-from app.models.client import Client
+from app.models.application import Application, ApplicationStatus
+from app.models.candidate import Candidate
 from app.models.comment import Comment
+from app.models.company import Company
 from app.models.contact import Contact
 from app.models.mixins import TimestampMixin
-from app.models.project import Project
-from app.models.tag import Tag
-from app.models.task import Task, TaskPriority, TaskStatus, task_tags
+from app.models.skill import Skill
 from app.models.user import User, UserRole
+from app.models.vacancy import Vacancy, vacancy_skills
 
 __all__ = [
+    "Application",
+    "ApplicationStatus",
     "Base",
-    "Client",
+    "Candidate",
     "Comment",
+    "Company",
     "Contact",
-    "Project",
-    "Tag",
-    "Task",
-    "TaskPriority",
-    "TaskStatus",
+    "Skill",
     "TimestampMixin",
     "User",
     "UserRole",
-    "task_tags",
+    "Vacancy",
+    "vacancy_skills",
 ]

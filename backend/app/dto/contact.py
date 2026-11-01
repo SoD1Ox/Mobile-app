@@ -1,4 +1,4 @@
-"""Contact DTOs (contact person of a client)."""
+"""Contact DTOs (contact person of a partner company)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ class ContactBase(BaseModel):
     position: str | None = Field(default=None, max_length=100)
     phone: str | None = Field(default=None, max_length=30)
     email: EmailStr | None = None
-    client_id: int = Field(gt=0)
+    company_id: int = Field(gt=0)
 
 
 class ContactCreate(ContactBase):
@@ -22,7 +22,7 @@ class ContactUpdate(BaseModel):
     position: str | None = Field(default=None, max_length=100)
     phone: str | None = Field(default=None, max_length=30)
     email: EmailStr | None = None
-    client_id: int | None = Field(default=None, gt=0)
+    company_id: int | None = Field(default=None, gt=0)
 
 
 class ContactRead(BaseModel):
@@ -31,6 +31,6 @@ class ContactRead(BaseModel):
     position: str | None
     phone: str | None
     email: str | None
-    client_id: int
+    company_id: int
 
     model_config = ConfigDict(from_attributes=True)

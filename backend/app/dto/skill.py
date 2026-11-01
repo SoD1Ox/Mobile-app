@@ -1,19 +1,19 @@
-"""Tag DTO."""
+"""Skill DTO (auxiliary entity, many-to-many with vacancies)."""
 
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class TagBase(BaseModel):
+class SkillBase(BaseModel):
     name: str = Field(min_length=1, max_length=50)
 
 
-class TagCreate(TagBase):
+class SkillCreate(SkillBase):
     pass
 
 
-class TagRead(BaseModel):
+class SkillRead(BaseModel):
     id: int
     name: str
 
