@@ -4,6 +4,8 @@
 /// scales crisply at any size and keeps the app free of the icon font.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 enum Glyph {
@@ -41,7 +43,13 @@ enum Glyph {
   building,
   dashboard,
   list,
+  star, // favourite vacancy (client-side feature)
+  check, // hired / done marker
+  chart, // funnel analytics
 }
+
+double _cos(double a) => math.cos(a);
+double _sin(double a) => math.sin(a);
 
 class GlassIcon extends StatelessWidget {
   final Glyph glyph;
@@ -477,6 +485,33 @@ class _GlyphPainter extends CustomPainter {
           p.moveTo(7, 10);
           p.lineTo(12, 15);
           p.lineTo(17, 10);
+        });
+      case Glyph.star:
+        final star = Path();
+        for (var i = 0; i < 10; i++) {
+          final r = i.isEven ? 8.0 : 3.4;
+          final a = -pi / 2 + i * pi / 5;
+          final pt = Offset(12 + r * _cos(a), 12 + r * _sin(a));
+          i == 0 ? star.moveTo(pt.dx, pt.dy) : star.lineTo(pt.dx, pt.dy);
+        }
+        star.close();
+        canvas.drawPath(star, stroke);
+      case Glyph.check:
+        _path(canvas, stroke, (p) {
+          p.moveTo(5, 12.5);
+          p.lineTo(10, 17.5);
+          p.lineTo(19, 7);
+        });
+      case Glyph.chart:
+        _line(canvas, stroke, const Offset(4, 20), const Offset(21, 20));
+        _line(canvas, stroke, const Offset(4, 20), const Offset(4, 4));
+        canvas.drawCircle(const Offset(8.5, 16), 1.6, fill);
+        canvas.drawCircle(const Offset(13, 11), 1.6, fill);
+        canvas.drawCircle(const Offset(18, 6.5), 1.6, fill);
+        _path(canvas, stroke, (p) {
+          p.moveTo(8.5, 16);
+          p.lineTo(13, 11);
+          p.lineTo(18, 6.5);
         });
     }
   }

@@ -1,6 +1,8 @@
-/// Authenticated app shell: dashboard + tab navigation (Задачи / Проекты /
-/// Клиенты / Пользователи) with an IndexedStack so every tab keeps its state
-/// (search text, filters, loaded pages) while switching tabs.
+/// Authenticated app shell of the staffing agency: dashboard + tab
+/// navigation (Вакансии / Кандидаты / Воронка найма / Компании / Люди) built
+/// on an IndexedStack so every tab keeps its state (search text, filters,
+/// loaded pages) while switching tabs.  The bottom bar is a real frosted-glass
+/// panel (BackdropFilter blur) — the only persistent blurred layer in the app.
 library;
 
 import 'package:flutter/material.dart';
@@ -10,10 +12,11 @@ import '../models/models.dart';
 import '../theme/glass.dart';
 import '../widgets/common.dart';
 import '../widgets/glass_icons.dart';
-import 'clients_screen.dart';
-import 'projects_screen.dart';
-import 'tasks_screen.dart';
+import 'applications_screen.dart';
+import 'candidates_screen.dart';
+import 'companies_screen.dart';
 import 'users_screen.dart';
+import 'vacancies_screen.dart';
 
 /// Bottom-nav destination built from custom vector glyphs (no Material Icons).
 class _Dest {
@@ -30,9 +33,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int? _taskCount;
-  int? _projectCount;
-  int? _clientCount;
+  int? _vacancyCount;
+  int? _candidateCount;
+  int? _companyCount;
+  Map<String, int>? _funnel;
   bool _statsLoading = false;
 
   /// Currently selected bottom-navigation tab.
@@ -49,15 +53,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final api = AppScope.of(context).api;
     try {
       final results = await Future.wait([
-        api.get('/tasks', {'page_size': 1}),
-        api.get('/projects', {'page_size': 1}),
-        api.get('/clients', {'page_size': 1}),
+        api.get('/vacancies', {'page_size': 1}),
+        api.get('/candidates', {'page_size': 1}),
+        api.get('/companies', {'page_size': 1}),
+        for (final s in ApplicationItem.pipelineOrder)
+          api.get('/applications', {'status': s, 'page_size': 1}),
       ]);
       if (!mounted) return;
       setState(() {
-        _taskCount = results[0]['total'];
-        _projectCount = results[1]['total'];
-        _clientCount = results[2]['total'];
+        _vacancyCount = results[0]['total'];
+        _candidateCount = results[1]['total'];
+        _companyCount = results[2]['total'];
+        _funnel = {
+          for (var i = 0; i < ApplicationItem.pipelineOrder.length; i++)
+            ApplicationItem.pipelineOrder[i]: results[3 + i]['total'] as int,
+        };
         _statsLoading = false;
       });
     } catch (e) {
@@ -88,9 +98,10 @@ class _HomeScreenState extends State<HomeScreen> {
       // ==================== Dashboard tab ====================
       _dashboard(user, greeting, scope),
       // ==================== section tabs =====================
-      const TasksScreen(),
-      const ProjectsScreen(),
-      const ClientsScreen(),
+      const VacanciesScreen(),
+      const CandidatesScreen(),
+      const ApplicationsScreen(),
+      const CompaniesScreen(),
       if (user.isAdmin) const UsersScreen(),
     ];
 
@@ -105,10 +116,11 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: (i) => setState(() => _tab = i),
             destinations: [
               const _Dest(Glyph.dashboard, 'Главная'),
-              const _Dest(Glyph.task, 'Задачи'),
-              const _Dest(Glyph.folder, 'Проекты'),
-              const _Dest(Glyph.building, 'Клиенты'),
-              if (user.isAdmin) const _Dest(Glyph.people, 'Люди'),
+              const _Dest(Glyph.briefcase, 'Вакансии'),
+              const _Dest(Glyph.people, 'Кандидаты'),
+              const _Dest(Glyph.kanban, 'Воронка'),
+              const _Dest(Glyph.building, 'Компании'),
+              if (user.isAdmin) const _Dest(Glyph.person, 'Люди'),
             ],
           ),
         ),
@@ -116,11 +128,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Dashboard tab content (greeting, stats, quick links to the sections).
+  /// Dashboard tab content (greeting, stats, hiring funnel, quick links).
   Widget _dashboard(AppUser user, String greeting, AppScope scope) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Task Tracker'),
+        title: const Text('Кадровое агентство'),
         actions: [
           GlassIconButton(Glyph.logout,
               tooltip: 'Выйти',
@@ -181,56 +193,70 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                     child: _StatTile(
-                        glyph: Glyph.task,
-                        label: 'Задачи',
-                        value: _taskCount,
+                        glyph: Glyph.briefcase,
+                        label: 'Вакансии',
+                        value: _vacancyCount,
                         loading: _statsLoading)),
                 const SizedBox(width: 8),
                 Expanded(
                     child: _StatTile(
-                        glyph: Glyph.folder,
-                        label: 'Проекты',
-                        value: _projectCount,
+                        glyph: Glyph.people,
+                        label: 'Кандидаты',
+                        value: _candidateCount,
                         loading: _statsLoading)),
                 const SizedBox(width: 8),
                 Expanded(
                     child: _StatTile(
                         glyph: Glyph.building,
-                        label: 'Клиенты',
-                        value: _clientCount,
+                        label: 'Компании',
+                        value: _companyCount,
                         loading: _statsLoading)),
               ],
             ),
+            const SizedBox(height: 16),
+
+            // -------- hiring funnel widget (our feature #1)
+            Text('Воронка найма',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            _FunnelCard(funnel: _funnel, loading: _statsLoading),
             const SizedBox(height: 16),
 
             // -------- navigation
             Text('Разделы', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             _NavCard(
-                glyph: Glyph.task,
-                title: 'Задачи',
-                subtitle: 'Поиск, фильтры, пагинация, комментарии',
+                glyph: Glyph.briefcase,
+                title: 'Вакансии',
+                subtitle: 'Поиск, фильтры, бесконечная прокрутка, избранное',
                 onTap: () => _openSection(1)),
             _NavCard(
-                glyph: Glyph.folder,
-                title: 'Проекты',
+                glyph: Glyph.people,
+                title: 'Кандидаты',
                 subtitle: user.canManage
-                    ? 'Просмотр и управление проектами'
-                    : 'Просмотр проектов',
+                    ? 'База соискателей, заметки рекрутеров'
+                    : 'Просмотр базы соискателей',
                 onTap: () => _openSection(2)),
             _NavCard(
-                glyph: Glyph.building,
-                title: 'Клиенты',
+                glyph: Glyph.kanban,
+                title: 'Воронка найма',
                 subtitle: user.canManage
-                    ? 'Клиенты и контактные лица'
-                    : 'Просмотр клиентов',
+                    ? 'Kanban: отклик → интервью → оффер → найм'
+                    : 'Отклики по этапам подбора',
                 onTap: () => _openSection(3)),
+            _NavCard(
+                glyph: Glyph.building,
+                title: 'Компании',
+                subtitle: user.canManage
+                    ? 'Партнёры агентства и их вакансии'
+                    : 'Партнёрские компании',
+                onTap: () => _openSection(4)),
             if (user.isAdmin)
               _NavCard(
-                  glyph: Glyph.people,
+                  glyph: Glyph.person,
                   title: 'Пользователи',
                   subtitle: 'Управление учётными записями и ролями (админ)',
-                  onTap: () => _openSection(4)),
+                  onTap: () => _openSection(5)),
           ],
         ),
       ),
@@ -270,6 +296,99 @@ class _StatTile extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// Animated horizontal funnel chart of application stages
+/// (new → review → interview → offer → hired).  Painted with CustomPaint —
+/// no external chart packages.
+class _FunnelCard extends StatelessWidget {
+  final Map<String, int>? funnel;
+  final bool loading;
+
+  const _FunnelCard({required this.funnel, required this.loading});
+
+  @override
+  Widget build(BuildContext context) {
+    final f = funnel;
+    if (loading || f == null) {
+      return const Card(
+          child: SizedBox(
+              height: 120,
+              child: Center(child: CircularProgressIndicator())));
+    }
+    final stages = ApplicationItem.pipelineOrder;
+    final maxV = stages.map((s) => f[s] ?? 0).fold<int>(1, (a, b) => a > b ? a : b);
+    final hired = f['hired'] ?? 0;
+    final allNew = f['new'] ?? 0;
+    final conv = allNew == 0 ? null : (hired * 100 / allNew);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final s in stages)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    SizedBox(
+                        width: 118,
+                        child: Text(ApplicationItem.statusLabels[s]!,
+                            style: const TextStyle(fontSize: 13))),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: (f[s] ?? 0) / maxV),
+                          duration: const Duration(milliseconds: 600),
+                          curve: Curves.easeOutCubic,
+                          builder: (_, v, __) => FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: v.clamp(0.02, 1.0),
+                            child: Container(
+                              height: 16,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(colors: [
+                                  statusColor(s).withOpacity(0.9),
+                                  statusColor(s).withOpacity(0.45),
+                                ]),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                        width: 34,
+                        child: Text('${f[s] ?? 0}',
+                            textAlign: TextAlign.end,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700))),
+                  ],
+                ),
+              ),
+            if (conv != null) ...[
+              const Divider(color: Colors.white24),
+              Row(
+                children: [
+                  const GlassIcon(Glyph.chart, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                      'Конверсия в найм: ${conv.toStringAsFixed(1)}%  ·  трудоустроено $hired',
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          color: Colors.white.withOpacity(0.75))),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _NavCard extends StatelessWidget {

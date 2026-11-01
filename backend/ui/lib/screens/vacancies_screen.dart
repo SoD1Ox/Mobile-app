@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../theme/glass.dart';
+import '../utils/local_store.dart';
 import '../widgets/common.dart';
 import '../widgets/glass_icons.dart';
 import 'vacancy_detail_screen.dart';
@@ -30,10 +31,21 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
   bool _loading = false;
   bool _hasMore = true;
 
+  /// Server page currently being fetched (1-based).  Used to drop responses
+  /// that arrive after a filter reset (race protection for infinite scroll).
+  int _fetchSeq = 0;
+
   String _search = '';
   String? _city;
   bool? _remote;
   double? _salaryMin;
+
+  // -------- local features: favourites + recent searches -----------------
+  final _favs = FavoritesStore();
+  final _recent = RecentSearches();
+  Set<int> _favIds = {};
+  bool _onlyFavs = false;
+  List<String> _recentSearches = [];
 
   static const _pageSize = 25;
 
@@ -42,6 +54,12 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _load(reset: true);
+    _favs.load().then((s) {
+      if (mounted) setState(() => _favIds = s);
+    });
+    _recent.load('vacancies').then((l) {
+      if (mounted) setState(() => _recentSearches = l);
+    });
   }
 
   @override
@@ -89,6 +107,33 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
     }
   }
 
+  void _applySearch(String v) {
+    _recent.push('vacancies', v);
+    setState(() {
+      _search = v.trim();
+      _recentSearches = List.of(_recentCacheWith(v));
+    });
+    _load(reset: true);
+  }
+
+  Iterable<String> _recentCacheWith(String v) {
+    final q = v.trim();
+    if (q.isEmpty) return _recentSearches;
+    return [q, ..._recentSearches.where((e) => e.toLowerCase() != q.toLowerCase())].take(6);
+  }
+
+  Future<void> _toggleFav(int id) async {
+    await _favs.toggle(id);
+    if (!mounted) return;
+    setState(() {
+      if (_favIds.contains(id)) {
+        _favIds.remove(id);
+      } else {
+        _favIds.add(id);
+      }
+    });
+  }
+
   Future<void> _openForm({VacancyItem? vacancy}) async {
     final changed = await Navigator.push<bool>(
       context,
@@ -129,10 +174,7 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                               _load(reset: true);
                             }),
                   ),
-                  onSubmitted: (v) {
-                    setState(() => _search = v.trim());
-                    _load(reset: true);
-                  },
+                  onSubmitted: _applySearch,
                 ),
               ),
               SingleChildScrollView(
@@ -140,6 +182,17 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
+                    FilterChip(
+                      avatar: GlassIcon(
+                          _onlyFavs ? Glyph.star : Glyph.close, size: 15),
+                      label: Text(_onlyFavs ? '★ Избранное' : 'Все вакансии'),
+                      selected: _onlyFavs,
+                      onSelected: (_) {
+                        setState(() => _onlyFavs = !_onlyFavs);
+                        _load(reset: true);
+                      },
+                    ),
+                    const SizedBox(width: 8),
                     FilterChip(
                       label: Text(_city == null ? 'Все города' : _city!),
                       selected: _city != null,
