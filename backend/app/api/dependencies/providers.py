@@ -6,23 +6,33 @@ sessions or ORM objects directly (architectural separation of concerns).
 
 from __future__ import annotations
 
-from app.services.client import ClientService
-from app.services.project import ProjectService
-from app.services.task import TaskService
+from app.services.application import ApplicationService
+from app.services.candidate import CandidateService
+from app.services.company import CompanyService
+from app.services.skill import SkillService
 from app.services.user import UserService
+from app.services.vacancy import VacancyService
 
 
 def get_user_service() -> UserService:
     return UserService()
 
 
-def get_project_service() -> ProjectService:
-    return ProjectService()
+def get_company_service() -> CompanyService:
+    return CompanyService()
 
 
-def get_task_service() -> TaskService:
-    return TaskService()
+def get_vacancy_service() -> VacancyService:
+    return VacancyService()
 
 
-def get_client_service() -> ClientService:
-    return ClientService()
+def get_candidate_service() -> CandidateService:
+    return CandidateService()
+
+
+def get_application_service() -> ApplicationService:
+    return ApplicationService()
+
+
+def get_skill_service() -> SkillService:
+    return SkillService()

@@ -1,6 +1,8 @@
 """Service layer: business logic between API endpoints and repositories."""
 
-from app.services.client import ClientService
+from app.services.application import ApplicationService
+from app.services.candidate import CandidateService
+from app.services.company import CompanyService
 from app.services.errors import (
     AuthenticationError,
     ConflictError,
@@ -9,19 +11,21 @@ from app.services.errors import (
     PermissionDeniedError,
     ValidationError,
 )
-from app.services.project import ProjectService
-from app.services.task import TaskService
+from app.services.skill import SkillService
 from app.services.user import UserService
+from app.services.vacancy import VacancyService
 
 __all__ = [
+    "ApplicationService",
     "AuthenticationError",
-    "ClientService",
+    "CandidateService",
+    "CompanyService",
     "ConflictError",
     "DomainError",
     "NotFoundError",
     "PermissionDeniedError",
-    "ProjectService",
-    "TaskService",
+    "SkillService",
     "UserService",
+    "VacancyService",
     "ValidationError",
 ]

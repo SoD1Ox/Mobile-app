@@ -1,11 +1,13 @@
-"""Seed the PostgreSQL database with demo data.
+"""Seed the PostgreSQL database with demo data for the staffing agency.
 
 Creates:
     * 3 users (admin / manager / worker) — passwords stored ONLY as bcrypt hashes;
-    * 8 clients (+ contact persons);
-    * 12 projects;
-    * 20 tags;
-    * ~1000 tasks (high-volume entity to demonstrate pagination) + comments.
+    * 10 companies (+ contact persons);
+    * 25 skills;
+    * ~120 vacancies (with required-skill links);
+    * ~400 candidates;
+    * ~1200 applications (high-volume entity to demonstrate pagination);
+    * recruiter comments on random candidates.
 
 Idempotent-ish: refuses to run on a non-empty ``users`` table unless ``--force``.
 
@@ -25,8 +27,18 @@ sys.path.insert(0, ".")
 from sqlalchemy import func, select, text  # noqa: E402
 
 from app.db.vis import Vis, get_session_factory  # noqa: E402
-from app.models import Client, Comment, Contact, Project, Tag, Task, UserRole  # noqa: E402
-from app.models.task import TaskPriority, TaskStatus  # noqa: E402
+from app.models import (  # noqa: E402
+    Application,
+    ApplicationStatus,
+    Candidate,
+    Comment,
+    Company,
+    Contact,
+    Skill,
+    User,
+    UserRole,
+    Vacancy,
+)
 from app.security.security import hash_password  # noqa: E402
 
 random.seed(42)
@@ -37,137 +49,209 @@ USERS = [
     ("worker", "worker@example.com", "Пётр Рабочих", UserRole.WORKER, "worker123"),
 ]
 
-CLIENTS = [
-    ("ООО Ромашка", "office@romashka.ru", "+7-495-111-2233", "Москва, ул. Складочная, 1"),
-    ("АО ТехноСофт", "info@technosoft.ru", "+7-812-222-3344", "СПб, Невский пр., 100"),
-    ("ИП Иванов А.А.", None, "+7-903-333-4455", "Казань, ул. Баумана, 5"),
-    ("Банк «ФинГрад»", "hr@fingrad.ru", "+7-495-444-5566", "Москва, Пресненская наб., 12"),
-    ("АО ЭнергоМир", "contact@energomir.ru", "+7-383-555-6677", "Новосибирск, Красный пр., 45"),
-    ("МедиаХолдинг", "pr@mediaholding.ru", "+7-495-666-7788", "Москва, Дубининская, 53"),
-    ("СтройИнвест Групп", None, "+7-861-777-8899", "Краснодар, ул. Красная, 70"),
-    ("ЛогистикПро", "ops@logisticpro.ru", "+7-916-888-9900", "Екатеринбург, Малышева, 15"),
+COMPANIES = [
+    ("ТехноСфера", "IT", "Москва", "hr@technosfera.ru"),
+    ("СтройГрад", "Строительство", "Санкт-Петербург", "office@stroygrad.ru"),
+    ("МедЛайф", "Медицина", "Казань", "care@medlife.ru"),
+    ("ФинПром", "Финансы", "Екатеринбург", "people@finprom.ru"),
+    ("АгроМир", "Сельское хозяйство", "Краснодар", "kadry@agromir.ru"),
+    ("ЛогистикПлюс", "Логистика", "Новосибирск", "hr@logisticplus.ru"),
+    ("ЭнергоТех", "Энергетика", "Самара", "personal@energotech.ru"),
+    ("Ритейл24", "Розничная торговля", "Москва", "team@retail24.ru"),
+    ("ДиджиталВейв", "IT", "Уфа", "join@digitalwave.ru"),
+    ("АвтоДрайв", "Автопром", "Нижний Новгород", "hr@autodrive.ru"),
 ]
 
-PROJECT_NAMES = [
-    "Мобильное приложение «Кошелёк»", "Портал самообслуживания", "CRM-модуль интеграции",
-    "Внутренний дашборд аналитики", "Личный кабинет подрядчика", "Сайт компании v2",
-    "Система документооборота", "Биллинг и тарификация", "IoT-панель мониторинга",
-    "Чат-бот поддержки", "Маркетинговая платформа", "API шлюз третьих сторон",
+CONTACTS_PER_COMPANY = [
+    ("Мария Иванова", "HR-менеджер"),
+    ("Сергей Петров", "Руководитель отдела"),
+    ("Ольга Смирнова", "Референт"),
 ]
 
-TAGS = [
-    "backend", "frontend", "mobile", "devops", "qa", "design", "api", "db",
-    "security", "docs", "hotfix", "feature", "ux", "performance", "bug",
-    "refactor", "analytics", "integration", "infra", "urgent",
+SKILLS = [
+    "Python", "Java", "JavaScript", "SQL", "Excel", "1С", "SAP", "AWS",
+    "Docker", "Kubernetes", "React", "Vue", "Go", "C++", "C#", ".NET",
+    "Android", "iOS", "Swift", "Kotlin", "DevOps", "Linux", "Git",
+    "Тестирование QA", "Аналитика данных",
 ]
 
-TASK_TITLES = [
-    "Реализовать", "Переписать", "Проверить", "Оптимизировать", "Спроектировать",
-    "Задокументировать", "Протестировать", "Настроить", "Обновить", "Исправить",
-]
-TASK_OBJECTS = [
-    "экран авторизации", "список задач", "пагинацию", "кэш ответов API",
-    "модель пользователя", "валидацию форм", "логирование ошибок", "индекс в БД",
-    "CI-конвейер", "макеты главной страницы", "фильтр по статусам", "поиск по названию",
-    "DTO комментариев", "миграцию схемы", "эндпоинт обновления", "кнопку «назад»",
-    "загрузку аватара", "обработку 401", "токен-обновление", "памятку пользователя",
+POSITIONS = [
+    ("Python-разработчик", ["Python", "SQL", "Docker", "Git"]),
+    ("Frontend-разработчик", ["JavaScript", "React", "Git"]),
+    ("Backend-разработчик", ["Java", "SQL", "Kubernetes"]),
+    ("QA-инженер", ["Тестирование QA", "Python", "Git"]),
+    ("Data-аналитик", ["SQL", "Excel", "Аналитика данных"]),
+    ("DevOps-инженер", ["DevOps", "Linux", "AWS", "Docker"]),
+    ("Менеджер по продажам", ["Excel"]),
+    ("Бухгалтер", ["1С", "Excel"]),
+    ("Инженер-проектировщик", ["AutoCAD" if False else "C++"]),
+    ("Водитель-экспедитор", []),
+    ("Оператор станка ЧПУ", []),
+    ("Медицинская сестра", []),
+    ("Кладовщик", ["1С"]),
+    ("HR-специалист", ["Excel", "1С"]),
+    ("iOS-разработчик", ["Swift", "iOS", "Git"]),
+    ("Android-разработчик", ["Kotlin", "Android", "Git"]),
 ]
 
+CITIES = ["Москва", "Санкт-Петербург", "Казань", "Екатеринбург", "Новосибирск",
+          "Краснодар", "Самара", "Уфа", "Нижний Новгород", "Челябинск"]
 
-def _empty(session) -> bool:
-    return (session.scalar(select(func.count()).select_from(Task)) or 0) == 0
+SPECIALIZATIONS = ["Разработка", "Тестирование", "Аналитика", "Бухгалтерия",
+                   "Продажи", "Логистика", "Медицина", "Производство", "HR", "Поддержка"]
+
+FIRST_NAMES = ["Алексей", "Мария", "Дмитрий", "Анна", "Сергей", "Ольга", "Иван",
+               "Екатерина", "Павел", "Наталья", "Тимур", "Алина", "Роман", "Юлия"]
+LAST_NAMES = ["Иванов", "Петрова", "Сидоров", "Кузнецова", "Смирнов", "Попова",
+              "Лебедев", "Козлова", "Новиков", "Морозова", "Волков", "Алексеева"]
+
+COMMENT_TEXTS = [
+    "Отличное резюме, приглашён на интервью.",
+    "Не хватает опыта по стеку, рассмотреть через полгода.",
+    "Прошёл техническое интервью успешно.",
+    "Ожидаем оффер от компании-заказчика.",
+    "Перезвонить в понедельник.",
+    "Кандидат взял паузу на размышление.",
+    "Отказ: не устроила зарплатная вилка.",
+]
 
 
 def main(force: bool = False) -> None:
     factory = get_session_factory()
     with Vis(factory) as session:
-        if not force and not _empty(session):
-            print("Database already contains tasks. Use --force to reseed.")
-            return
-        if force:
-            for table in ("comments", "task_tags", "tasks", "tags", "projects",
-                          "contacts", "clients", "users"):
-                session.execute(text(f"TRUNCATE {table} CASCADE"))
-            session.flush()
+        users_total = session.scalar(select(func.count()).select_from(User)) or 0
+    if users_total and not force:
+        print("Database already contains users. Use --force to seed anyway.")
+        return
 
-        # ---- users -------------------------------------------------------
-        from app.models.user import User
+    if force:
+        with Vis(factory) as session:
+            for table in ("applications", "comments", "candidates", "vacancy_skills",
+                          "vacancies", "contacts", "companies", "skills", "users"):
+                try:
+                    session.execute(text(f"DELETE FROM {table}"))
+                except Exception:
+                    session.rollback()
 
-        users = []
-        for username, email, full_name, role, pwd in USERS:
-            u = User(
+    # ------------------------------------------------------------- users
+    user_ids: list[int] = []
+    with Vis(factory) as session:
+        for username, email, full_name, role, password in USERS:
+            user = User(
                 username=username, email=email, full_name=full_name,
-                password_hash=hash_password(pwd), role=role, is_active=True,
+                password_hash=hash_password(password), role=role,
             )
-            session.add(u)
-            users.append(u)
-        session.flush()
+            session.add(user)
+            session.flush()
+            user_ids.append(user.id)
+    manager_id, worker_id = user_ids[1], user_ids[2]
+    print(f"users: {len(user_ids)}")
 
-        # ---- clients + contacts ------------------------------------------
-        clients = []
-        for name, email, phone, address in CLIENTS:
-            c = Client(name=name, email=email, phone=phone, address=address)
-            session.add(c)
-            clients.append(c)
-        session.flush()
-        for c in clients:
-            for i in range(random.randint(1, 3)):
+    # ------------------------------------------------------------ skills
+    skill_ids: dict[str, int] = {}
+    with Vis(factory) as session:
+        for name in SKILLS:
+            skill = Skill(name=name)
+            session.add(skill)
+            session.flush()
+            skill_ids[name] = skill.id
+    print(f"skills: {len(skill_ids)}")
+
+    # --------------------------------------------------- companies + contacts
+    company_ids: list[int] = []
+    with Vis(factory) as session:
+        for name, industry, city, email in COMPANIES:
+            company = Company(
+                name=name, industry=industry, address=f"г. {city}, ул. Примерная, 1",
+                email=email, phone=f"+7 ({random.randint(100,999)}) {random.randint(100,999)}-{random.randint(10,99)}-{random.randint(10,99)}",
+            )
+            session.add(company)
+            session.flush()
+            company_ids.append(company.id)
+            for i, (cname, cpos) in enumerate(CONTACTS_PER_COMPANY[: random.randint(1, 3)]):
                 session.add(Contact(
-                    full_name=f"Контакт {c.name.split()[0][:8]}-{i+1}",
-                    position=random.choice(["Директор", "IT-менеджер", "Бухгалтер", "Юрист"]),
-                    phone=f"+7-900-{random.randint(1000000, 9999999)}",
-                    email=f"contact{i+1}@{c.name[:6].lower().replace(' ', '')}.ru",
-                    client_id=c.id,
+                    full_name=f"{cname} ({name[:6]})" if i == 0 else cname,
+                    position=cpos, company_id=company.id,
+                    email=f"{cpos.split()[0].lower()}{i}@{email.split('@')[1]}",
                 ))
+    print(f"companies: {len(company_ids)}")
 
-        # ---- projects ------------------------------------------------------
-        projects = []
-        for i, pname in enumerate(PROJECT_NAMES):
-            projects.append(Project(
-                name=pname,
-                description=f"Проект №{i+1}: {pname.lower()} для клиента «{clients[i % len(clients)].name}».",
-                budget=Decimal(random.randint(100_000, 9_000_000)),
-                client_id=clients[i % len(clients)].id,
-            ))
-        session.add_all(projects)
-
-        # ---- tags ----------------------------------------------------------
-        tags = [Tag(name=t) for t in TAGS]
-        session.add_all(tags)
-        session.flush()
-
-        # ---- tasks (~1000, high volume) + comments -------------------------
-        statuses = list(TaskStatus)
-        priorities = list(TaskPriority)
-        batch = []
-        for n in range(1, 1001):
-            task = Task(
-                title=f"{random.choice(TASK_TITLES)} {random.choice(TASK_OBJECTS)} #{n}",
-                description=(
-                    f"Задача {n}: необходимо выполнить работы и сдать результат "
-                    f"заказчику. Критерии приёмки описаны в документации проекта."
-                ),
-                status=random.choices(statuses, weights=[20, 35, 15, 25, 5])[0],
-                priority=random.choices(priorities, weights=[30, 40, 20, 10])[0],
-                estimate_hours=random.randint(1, 80),
-                project_id=random.choice(projects).id,
-                author_id=random.choice(users).id,
+    # --------------------------------------------------------- vacancies
+    vacancies: list[tuple[int, list[int]]] = []  # (vacancy_id, skill ids)
+    with Vis(factory) as session:
+        for n in range(120):
+            title, req_skills = random.choice(POSITIONS)
+            salary_from = Decimal(random.randrange(40, 350, 10) * 10000)
+            vacancy = Vacancy(
+                title=f"{title} #{n+1}",
+                description=f"Требуется {title.lower()} в компанию. Проект №{n+1}, "
+                            f"оформление по ТК РФ, ДМС, гибридный график.",
+                salary_from=salary_from,
+                salary_to=salary_from + Decimal(random.randrange(3, 20, 1) * 10000),
+                city=random.choice(CITIES),
+                remote=random.random() < 0.3,
+                company_id=random.choice(company_ids),
             )
-            task.tags = random.sample(tags, k=random.randint(0, 3))
-            batch.append(task)
-        session.add_all(batch)
-        session.flush()
+            session.add(vacancy)
+            session.flush()
+            sids = [skill_ids[s] for s in req_skills if s in skill_ids]
+            if sids:
+                vacancy.skills = list(session.scalars(select(Skill).where(Skill.id.in_(sids))))
+            vacancies.append((vacancy.id, sids))
+    print(f"vacancies: {len(vacancies)}")
 
-        for task in random.sample(batch, k=250):
-            session.add(Comment(
-                text=f"Комментарий к задаче #{task.id}: статус уточнён, работаю дальше.",
-                task_id=task.id,
-                author_id=random.choice(users).id,
+    # -------------------------------------------------------- candidates
+    candidate_ids: list[int] = []
+    with Vis(factory) as session:
+        for n in range(400):
+            first, last = random.choice(FIRST_NAMES), random.choice(LAST_NAMES)
+            if first.endswith("а") or first in {"Мария", "Анна", "Ольга", "Екатерина", "Наталья", "Алина", "Юлия"}:
+                last = last[:-1] + "а" if last.endswith("ов") else last
+            candidate = Candidate(
+                full_name=f"{last} {first}",
+                email=f"candidate{n+1}@example.com",
+                phone=f"+7 9{random.randint(10,99)} {random.randint(100,999)}-{random.randint(10,99)}-{random.randint(10,99)}",
+                city=random.choice(CITIES),
+                specialization=random.choice(SPECIALIZATIONS),
+                experience_years=random.randint(0, 20),
+                resume_url=f"https://resumes.example.com/{n+1}.pdf" if random.random() < 0.8 else None,
+            )
+            session.add(candidate)
+            session.flush()
+            candidate_ids.append(candidate.id)
+    print(f"candidates: {len(candidate_ids)}")
+
+    # ------------------------------------------------------ applications
+    statuses = list(ApplicationStatus)
+    weights = [30, 25, 20, 10, 5, 10]  # new..rejected distribution
+    pairs: set[tuple[int, int]] = set()
+    created = 0
+    with Vis(factory) as session:
+        while created < 1200:
+            cid = random.choice(candidate_ids)
+            vid, _ = random.choice(vacancies)
+            if (cid, vid) in pairs:
+                continue
+            pairs.add((cid, vid))
+            session.add(Application(
+                candidate_id=cid, vacancy_id=vid,
+                status=random.choices(statuses, weights=weights)[0],
+                manager_id=random.choice([None, manager_id]),
             ))
+            created += 1
+        session.flush()
+    print(f"applications: {created}")
 
-    print("Seed complete:")
-    print("  users: admin/admin123, manager/manager123, worker/worker123")
-    print(f"  clients: {len(CLIENTS)}, projects: {len(PROJECT_NAMES)}, tasks: 1000")
+    # ---------------------------------------------------------- comments
+    with Vis(factory) as session:
+        for cid in random.sample(candidate_ids, 150):
+            session.add(Comment(
+                text=random.choice(COMMENT_TEXTS),
+                candidate_id=cid,
+                author_id=random.choice([manager_id, worker_id]),
+            ))
+    print("comments: 150")
+    print("Seed completed.")
 
 
 if __name__ == "__main__":

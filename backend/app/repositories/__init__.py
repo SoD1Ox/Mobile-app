@@ -1,21 +1,23 @@
 """Repository layer: one repository class per entity, encapsulating all SQLAlchemy queries."""
 
+from app.repositories.application import ApplicationRepository
 from app.repositories.base import BaseRepository
-from app.repositories.client import ClientRepository
+from app.repositories.candidate import CandidateRepository
 from app.repositories.comment import CommentRepository
+from app.repositories.company import CompanyRepository
 from app.repositories.contact import ContactRepository
-from app.repositories.project import ProjectRepository
-from app.repositories.tag import TagRepository
-from app.repositories.task import TaskRepository
+from app.repositories.skill import SkillRepository
 from app.repositories.user import UserRepository
+from app.repositories.vacancy import VacancyRepository
 
 __all__ = [
+    "ApplicationRepository",
     "BaseRepository",
-    "ClientRepository",
+    "CandidateRepository",
     "CommentRepository",
+    "CompanyRepository",
     "ContactRepository",
-    "ProjectRepository",
-    "TagRepository",
-    "TaskRepository",
+    "SkillRepository",
     "UserRepository",
+    "VacancyRepository",
 ]
