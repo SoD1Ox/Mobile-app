@@ -204,7 +204,7 @@ ThemeData buildGlassTheme() {
 dynamic _buildGlassCardTheme(Type expected) {
   final wantsData = expected.toString().contains('Data');
   if (wantsData) {
-    return const CardThemeData(
+    return CardTheme(
       color: _glassFill,
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -229,7 +229,7 @@ dynamic _buildGlassCardTheme(Type expected) {
 dynamic _buildGlassDialogTheme(Type expected) {
   final wantsData = expected.toString().contains('Data');
   if (wantsData) {
-    return DialogThemeData(
+    return DialogTheme(
       backgroundColor: const Color(0xF2182A4D),
       surfaceTintColor: Colors.transparent,
       shape: const RoundedRectangleBorder(

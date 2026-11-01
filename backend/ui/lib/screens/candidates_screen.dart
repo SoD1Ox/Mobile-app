@@ -145,13 +145,12 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = AppScope.read(context).user;
     final hasFilters = _search.isNotEmpty || _city != null || _specialization != null;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Кандидаты'),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(_recentSearches.isEmpty ? 118 : 154),
+          preferredSize: Size.fromHeight(_recentSearches.isEmpty ? 118 : 154),
           child: Column(
             children: [
               Padding(

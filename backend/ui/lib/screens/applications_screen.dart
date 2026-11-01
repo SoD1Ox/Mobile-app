@@ -5,8 +5,10 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../api/api_client.dart';
 import '../app_state.dart';
 import '../models/models.dart';
+import '../theme/glass.dart';
 import '../widgets/common.dart';
 import '../widgets/glass_icons.dart';
 
@@ -179,6 +181,7 @@ class _KanbanColumn extends StatelessWidget {
   final String Function(int) nameOf;
   final String Function(int) vacancyOf;
   final void Function(ApplicationItem, String) onMove;
+  final Future<void> Function(int) ensureName;
 
   const _KanbanColumn({
     required this.stage,
@@ -187,6 +190,7 @@ class _KanbanColumn extends StatelessWidget {
     required this.nameOf,
     required this.vacancyOf,
     required this.onMove,
+    required this.ensureName,
   });
 
   @override
@@ -424,7 +428,7 @@ class _NewApplicationSheetState extends State<_NewApplicationSheet> {
 
   Future<void> _create() async {
     if (_candidateId == null || _vacancyId == null) {
-      showError(context, ApiException(0, 'Выберите кандидата и вакансию'));
+      showError(context, 'Выберите кандидата и вакансию');
       return;
     }
     final api = AppScope.read(context).api;
