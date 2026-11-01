@@ -157,22 +157,33 @@ def main(force: bool = False) -> None:
     Base.metadata.create_all(engine, checkfirst=True)
     inspector = sa_inspect(engine)
     existing = set(inspector.get_table_names())
-    if "applications" in existing:
-        db_cols = {c["name"] for c in inspector.get_columns("applications")}
-        app_table = Base.metadata.tables["applications"]
-        missing = set(app_table.columns.keys()) - db_cols - {"id", "created_at", "updated_at"}
+    # Self-heal missing columns on every table that gained fields after the
+    # initial migration (e.g. applications.assigned_worker_id / status_history,
+    # users.completion_score).  Safe: only ADDs nullable columns.
+    _DEFAULTS = {"status_history": "''"}
+    for tname, table in Base.metadata.tables.items():
+        if tname not in existing or tname == "alembic_version":
+            continue
+        try:
+            db_cols = {c["name"] for c in inspector.get_columns(tname)}
+        except Exception:
+            continue
+        missing = set(table.columns.keys()) - db_cols - {"id", "created_at", "updated_at"}
         for col in sorted(missing):
-            column = app_table.columns[col]
+            column = table.columns[col]
             try:
                 col_type = column.type.compile(dialect=engine.dialect)
-                nullable = "" if column.nullable else " NOT NULL DEFAULT NULL"
+                sql = f'ALTER TABLE {tname} ADD COLUMN "{col}" {col_type}'
+                if not column.nullable:
+                    default = _DEFAULTS.get(col)
+                    if default is None:
+                        continue  # cannot safely add a required column w/o default
+                    sql += f" NOT NULL DEFAULT {default}"
                 with engine.begin() as conn:
-                    conn.exec_driver_sql(
-                        f'ALTER TABLE applications ADD COLUMN "{col}" '
-                        f'{col_type}{nullable}')
-                print(f"Schema drift fixed: added column applications.{col}")
+                    conn.exec_driver_sql(sql)
+                print(f"Schema drift fixed: added column {tname}.{col}")
             except Exception as exc:  # pragma: no cover - best effort
-                print(f"Could not auto-add applications.{col}: {exc}")
+                print(f"Could not auto-add {tname}.{col}: {exc}")
 
     with Vis(factory) as session:
         users_total = session.scalar(select(func.count()).select_from(User)) or 0

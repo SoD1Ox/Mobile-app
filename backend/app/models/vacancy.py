@@ -24,7 +24,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.mixins import StatusHistoryMixin, TimestampMixin
+from app.models.mixins import TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.application import Application
@@ -41,7 +41,7 @@ vacancy_skills = Table(
 )
 
 
-class Vacancy(TimestampMixin, StatusHistoryMixin, Base):
+class Vacancy(TimestampMixin, Base):
     __tablename__ = "vacancies"
 
     id: Mapped[int] = mapped_column(primary_key=True)
