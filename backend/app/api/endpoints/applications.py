@@ -81,6 +81,20 @@ def list_applications(
     )
 
 
+@router.get("/stats", summary="Dashboard aggregates (single query, no pagination)")
+def application_stats(
+    current_user: CurrentUser,
+    service: ApplicationService = Depends(get_application_service),
+) -> dict:
+    """Fast counters for the home dashboard tiles.
+
+    Returns ``{"total": n, "by_status": {"new": x, "hired": y, ...}}`` in one
+    GROUP BY query — the UI uses it instead of paging through 1200 rows, so
+    the stat tiles can never hang on an infinite spinner.
+    """
+    return service.stats(user_id=current_user.id, scoped_worker=current_user.role == UserRole.WORKER)
+
+
 @router.get("/{application_id}", response_model=ApplicationRead, summary="Get one application")
 def get_application(
     application_id: int,

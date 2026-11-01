@@ -328,6 +328,11 @@ def main(force: bool = False) -> None:
                 status=st,
                 manager_id=random.choice([None, manager_id]),
                 assigned_worker_id=assigned,
+                # Seed the audit trail so the UI timeline and funnel score
+                # are populated even before any PATCH moves happen.
+                prev_status=None,
+                status_history=f"-> {st.value} (seed @ {_utcnow()})",
+                completion_score=STATUS_SCORE[st],
             ))
             created += 1
         session.flush()

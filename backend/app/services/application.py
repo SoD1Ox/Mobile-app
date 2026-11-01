@@ -49,6 +49,19 @@ class ApplicationService:
             assigned_worker_id=assigned_worker_id,
         )
 
+    def stats(self, user_id: int | None = None, scoped_worker: bool = False) -> dict:
+        """Dashboard aggregates: total + per-status counts in one GROUP BY.
+
+        For a worker the numbers are scoped to their own assignments so the
+        tiles show their personal queue, not the whole agency funnel.
+        ``mine`` additionally returns the count assigned to this user for any
+        role (used by the "Мои кейсы" tile on manager dashboards).
+        """
+        return self._repo.status_counts(
+            assigned_worker_id=user_id if scoped_worker else None,
+            mine_user_id=user_id,
+        )
+
     def get_application(self, application_id: int) -> ApplicationRead:
         application = self._repo.get_by_id(application_id)
         if application is None:

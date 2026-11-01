@@ -72,7 +72,15 @@ class ApplicationRepository(
 
     def create(self, data: ApplicationCreate) -> ApplicationRead:
         with Vis(self._factory) as session:
-            obj = Application(**data.model_dump())
+            # ApplicationCreate has no `status` field — new applications
+            # always start at "new" (DB default).
+            obj = Application(
+                **data.model_dump(),
+                status=ApplicationStatus.NEW,
+                prev_status=None,
+                status_history=f"-> new (created @ {_utcnow()})",
+                completion_score=STATUS_SCORE[ApplicationStatus.NEW],
+            )
             session.add(obj)
             session.commit()
             session.refresh(obj)
@@ -100,6 +108,31 @@ class ApplicationRepository(
             session.commit()
             session.refresh(obj)
             return self._enrich(session, obj)
+
+    def status_counts(
+        self,
+        assigned_worker_id: int | None = None,
+        mine_user_id: int | None = None,
+    ) -> dict:
+        """One GROUP BY over the status column — dashboard tiles in a single
+        cheap query instead of paging through thousands of rows."""
+        with Vis(self._factory) as session:
+            stmt = select(Application.status, func.count()).group_by(Application.status)
+            if assigned_worker_id is not None:
+                stmt = stmt.where(Application.assigned_worker_id == assigned_worker_id)
+            counts = {
+                (st.value if hasattr(st, "value") else str(st)): n
+                for st, n in session.execute(stmt).all()
+            }
+            total = sum(counts.values())
+            mine = 0
+            if mine_user_id is not None:
+                mine = session.scalar(
+                    select(func.count())
+                    .select_from(Application)
+                    .where(Application.assigned_worker_id == mine_user_id)
+                ) or 0
+            return {"total": total, "by_status": counts, "mine": mine}
 
     def search_paginated(
         self,
