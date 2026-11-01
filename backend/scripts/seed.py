@@ -126,12 +126,26 @@ def main(force: bool = False) -> None:
 
     if force:
         with Vis(factory) as session:
-            for table in ("applications", "comments", "candidates", "vacancy_skills",
-                          "vacancies", "contacts", "companies", "skills", "users"):
-                try:
-                    session.execute(text(f"DELETE FROM {table}"))
-                except Exception:
-                    session.rollback()
+            # Delete children -> parents (FK-safe on every dialect).
+            for table in ("applications", "comments", "candidates",
+                          "vacancy_skills", "vacancies", "contacts",
+                          "companies", "skills", "users"):
+                session.execute(text(f"DELETE FROM {table}"))
+            session.commit()
+            # Reset PK sequences so fresh inserts don't collide with old
+            # auto-increment counters (PostgreSQL only; SQLite uses
+            # sqlite_sequence which DELETE already frees).
+            bind = session.get_bind()
+            if bind.dialect.name == "postgresql":
+                for table in ("applications", "comments", "candidates",
+                              "vacancies", "contacts", "companies",
+                              "skills", "users"):
+                    try:
+                        session.execute(text(
+                            f"ALTER SEQUENCE {table}_id_seq RESTART WITH 1"))
+                    except Exception:
+                        session.rollback()
+                session.commit()
 
     # ------------------------------------------------------------- users
     user_ids: list[int] = []

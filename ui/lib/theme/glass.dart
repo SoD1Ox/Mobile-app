@@ -48,7 +48,7 @@ ThemeData buildGlassTheme() {
         ),
       );
 
-  final theme = ThemeData(
+  var theme = ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: Colors.transparent,
@@ -185,29 +185,47 @@ ThemeData buildGlassTheme() {
     ),
   );
 
-  // Card & dialog glass themes (CardThemeData spelling exists on SDK>=3.32;
-  // this project targets 3.24 where CardTheme/DialogTheme are the classes).
-  return theme.copyWith(
-    cardTheme: const CardTheme(
-      color: _glassFill,
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: kGlassRadius,
-        side: BorderSide(color: _glassBorder),
-      ),
-    ),
-    dialogTheme: DialogTheme(
-      backgroundColor: const Color(0xF210302B),
-      surfaceTintColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(22)),
-        side: BorderSide(color: _glassBorder),
-      ),
-      titleTextStyle: const TextStyle(
-          color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700),
-      contentTextStyle: TextStyle(
-          color: Colors.white.withOpacity(0.85), fontSize: 14.5),
+  // Card & dialog glass themes. The parameter type was renamed
+  // CardTheme -> CardThemeData and DialogTheme -> DialogThemeData in
+  // Flutter 3.32+. To compile on BOTH old (3.24) and new (3.32+) SDKs we
+  // don't name either class at all: ThemeData.cardTheme/dialogTheme getters
+  // are dynamic-copied via ThemeExtension-free reflection below.
+  theme = _applyGlassCard(theme);
+  theme = _applyGlassDialog(theme);
+  return theme;
+}
+
+// Builds a card theme using whatever spelling the current SDK exposes.
+ThemeData _applyGlassCard(ThemeData base) {
+  final Object? ct = base.cardTheme as Object?;
+  if (ct == null) return base;
+  // copyWith exists on both CardTheme (old) and CardThemeData (new).
+  final dynamic copied = (ct as dynamic).copyWith(
+    color: _glassFill,
+    elevation: 0.0,
+    margin: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(
+      borderRadius: kGlassRadius,
+      side: BorderSide(color: _glassBorder),
     ),
   );
+  return (base as dynamic).copyWith(cardTheme: copied) as ThemeData;
+}
+
+ThemeData _applyGlassDialog(ThemeData base) {
+  final Object? dt = base.dialogTheme as Object?;
+  if (dt == null) return base;
+  final dynamic copied = (dt as dynamic).copyWith(
+    backgroundColor: const Color(0xF210302B),
+    surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(
+      borderRadius: const BorderRadius.all(Radius.circular(22)),
+      side: BorderSide(color: _glassBorder),
+    ),
+    titleTextStyle: const TextStyle(
+        color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700),
+    contentTextStyle: TextStyle(
+        color: Colors.white.withOpacity(0.85), fontSize: 14.5),
+  );
+  return (base as dynamic).copyWith(dialogTheme: copied) as ThemeData;
 }
