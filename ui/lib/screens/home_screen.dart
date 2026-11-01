@@ -433,8 +433,12 @@ class _GlassNavBar extends StatelessWidget {
                         GlassIcon(destinations[i].icon,
                             size: 21,
                             color: i == index
-                                ? Colors.white
-                                : Colors.white.withOpacity(0.55)),
+                                ? kAccentColor
+                                : Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium!
+                                    .color!
+                                    .withOpacity(0.55)),
                         const SizedBox(height: 3),
                         Text(destinations[i].label,
                             maxLines: 1,
@@ -445,9 +449,12 @@ class _GlassNavBar extends StatelessWidget {
                                     ? FontWeight.w700
                                     : FontWeight.w500,
                                 color: i == index
-                                    ? Colors.white
-                                    : Colors
-                                        .white.withOpacity(0.55))),
+                                    ? kAccentColor
+                                    : Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium!
+                                        .color!
+                                        .withOpacity(0.55))),
                       ],
                     ),
                   ),

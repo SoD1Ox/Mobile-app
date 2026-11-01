@@ -194,31 +194,56 @@ class _AuroraBackground extends StatelessWidget {
         offset: Offset(0, -260)),
   ];
 
+  // Light mint variant: soft daylight gradient + pastel glow blobs.
+  static const List<BoxShadow> _glowLight = [
+    BoxShadow(
+        color: Color(0x597BE8CB),
+        blurRadius: 140,
+        spreadRadius: 40,
+        offset: Offset(-120, -80)),
+    BoxShadow(
+        color: Color(0x40FFB49A),
+        blurRadius: 160,
+        spreadRadius: 30,
+        offset: Offset(160, 220)),
+    BoxShadow(
+        color: Color(0x339DEDDA),
+        blurRadius: 120,
+        spreadRadius: 20,
+        offset: Offset(0, -260)),
+  ];
+
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0C1F1D), Color(0xFF123330), Color(0xFF081413)],
-            stops: [0.0, 0.55, 1.0],
-          ),
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? const [Color(0xFF0C1F1D), Color(0xFF123330), Color(0xFF081413)]
+              : const [Color(0xFFF2FAF7), Color(0xFFE2F3EC), Color(0xFFEFF8F4)],
+          stops: const [0.0, 0.55, 1.0],
         ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Container(
-                  width: 1,
-                  height: 1,
-                  alignment: Alignment.topLeft,
-                  decoration: const BoxDecoration(boxShadow: _glow),
-                ),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                width: 1,
+                height: 1,
+                alignment: Alignment.topLeft,
+                decoration:
+                    BoxDecoration(boxShadow: isDark ? _glow : _glowLight),
               ),
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Real backdrop-blur glass card — for detail screens, dashboards, dialogs.

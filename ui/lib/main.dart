@@ -13,10 +13,12 @@ import 'package:flutter/material.dart';
 import 'api/api_client.dart';
 import 'app_state.dart';
 import 'models/models.dart';
+import 'notifications.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
 import 'theme/glass.dart';
 import 'theme/glass_stack.dart';
+import 'theme/theme_controller.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +34,8 @@ class StaffingAgencyApp extends StatefulWidget {
 
 class _StaffingAgencyAppState extends State<StaffingAgencyApp> {
   final ApiClient _api = ApiClient();
+  final NotificationStore _notifications = NotificationStore();
+  ThemeController? _theme;
   AppUser? _user;
   bool _bootstrapping = true;
 
@@ -42,46 +46,78 @@ class _StaffingAgencyAppState extends State<StaffingAgencyApp> {
   }
 
   Future<void> _bootstrap() async {
+    final theme = await ThemeController.load();
     await _api.loadTokens();
     if (_api.hasToken) {
       try {
         final me = await _api.me();
         _user = AppUser.fromJson(me);
+        _onUserReady(_user!);
       } catch (_) {
         // token invalid/expired — continue to login screen
         await _api.clearTokens();
       }
     }
-    if (mounted) setState(() => _bootstrapping = false);
+    if (mounted) {
+      setState(() {
+        _theme = theme;
+        _bootstrapping = false;
+      });
+    }
   }
 
-  void _signedIn(AppUser u) => setState(() => _user = u);
+  void _onUserReady(AppUser u) {
+    _notifications.currentUser = u.username;
+    _notifications.loadFor(u.username);
+  }
+
+  void _signedIn(AppUser u) {
+    _onUserReady(u);
+    setState(() => _user = u);
+  }
 
   void _signedOut() => setState(() => _user = null);
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Кадровое агентство',
-      debugShowCheckedModeBanner: false,
-      theme: buildGlassTheme(),
-      home: AppScope(
-        api: _api,
-        user: _user,
-        onSignedOut: _signedOut,
-        onUserUpdated: _signedIn,
-        child: _bootstrapping
-            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
-            : _user == null
+    if (_bootstrapping || _theme == null) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: buildGlassTheme(),
+        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
+        builder: (context, child) =>
+            GlassRoot(child: SafeArea(child: child ?? const SizedBox())),
+      );
+    }
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: _theme!,
+      builder: (_, mode, __) => MaterialApp(
+        title: 'Кадровое агентство',
+        debugShowCheckedModeBanner: false,
+        themeMode: mode,
+        theme: buildGlassTheme(brightness: Brightness.light),
+        darkTheme: buildGlassTheme(brightness: Brightness.dark),
+        home: ListenableBuilder(
+          listenable: _notifications,
+          builder: (_, __) => AppScope(
+            api: _api,
+            user: _user,
+            theme: _theme!,
+            notifications: _notifications,
+            onSignedOut: _signedOut,
+            onUserUpdated: _signedIn,
+            child: _user == null
                 ? const LoginScreen()
                 : const HomeScreen(),
-      ),
-      // One app-wide backdrop: aurora gradient at the bottom, page tree in
-      // the middle, a single live-blur frosted overlay strip on top that the
-      // current screen fills via FrostedHeader. Painted once per frame —
-      // screens never re-wrap the background themselves.
-      builder: (context, child) => GlassRoot(
-        child: SafeArea(child: child ?? const SizedBox()),
+          ),
+        ),
+        // One app-wide backdrop: aurora gradient at the bottom, page tree in
+        // the middle, a single live-blur frosted overlay strip on top that the
+        // current screen fills via FrostedHeader. Painted once per frame —
+        // screens never re-wrap the background themselves.
+        builder: (context, child) => GlassRoot(
+          child: SafeArea(child: child ?? const SizedBox()),
+        ),
       ),
     );
   }

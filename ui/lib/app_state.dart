@@ -1,14 +1,19 @@
-/// Global app state: API client + current user.  Provided via InheritedWidget.
+/// Global app state: API client + current user + theme controller.
+/// Provided via InheritedWidget.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import '../models/models.dart';
+import '../theme/theme_controller.dart';
+import 'notifications.dart';
 
 class AppScope extends InheritedWidget {
   final ApiClient api;
   final AppUser? user;
+  final ThemeController theme;
+  final NotificationStore notifications;
   final VoidCallback onSignedOut;
   final ValueChanged<AppUser> onUserUpdated;
 
@@ -16,6 +21,8 @@ class AppScope extends InheritedWidget {
     super.key,
     required this.api,
     required this.user,
+    required this.theme,
+    required this.notifications,
     required this.onSignedOut,
     required this.onUserUpdated,
     required super.child,
@@ -32,7 +39,10 @@ class AppScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(AppScope oldWidget) =>
-      oldWidget.user != user || oldWidget.api != api;
+      oldWidget.user != user ||
+      oldWidget.api != api ||
+      oldWidget.theme != theme ||
+      oldWidget.notifications != notifications;
 }
 
 /// Small helper to show readable error snack-bars everywhere.

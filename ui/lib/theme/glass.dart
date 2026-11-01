@@ -33,12 +33,14 @@ const Color kCoralColor = _accentCoral;
 /// Dark glass surface used behind dialogs / dropdown menus.
 const Color kDialogSurface = Color(0xF210302B);
 
-/// App-wide dark Material-3 theme built around the glass look.
-ThemeData buildGlassTheme() {
+/// App-wide Material-3 theme built around the glass look.
+/// Supports both dark (default) and light mint-glass variants.
+ThemeData buildGlassTheme({Brightness brightness = Brightness.dark}) {
+  final isDark = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(
     seedColor: _accent,
-    brightness: Brightness.dark,
-  ).copyWith(surface: const Color(0xFF0F2925));
+    brightness: brightness,
+  ).copyWith(surface: isDark ? const Color(0xFF0F2925) : const Color(0xFFEFF7F4));
 
   OutlineInputBorder fieldBorder({bool focused = false}) => OutlineInputBorder(
         borderRadius: kGlassRadius,
@@ -48,12 +50,22 @@ ThemeData buildGlassTheme() {
         ),
       );
 
+  // Foreground/text colors follow the brightness so the light mint-glass
+  // variant stays readable everywhere.
+  final fg = isDark ? Colors.white : const Color(0xFF0C2A24);
+  final subtle = isDark
+      ? const Color(0xCCD9E6E1)
+      : const Color(0xB3163A33);
+
   var theme = ThemeData(
     useMaterial3: true,
+    brightness: brightness,
     colorScheme: scheme,
     scaffoldBackgroundColor: Colors.transparent,
     canvasColor: Colors.transparent,
-    dialogBackgroundColor: const Color(0xF210302B),
+    dialogBackgroundColor: isDark
+        ? const Color(0xF210302B)
+        : const Color(0xF2F5FBF8),
     visualDensity: VisualDensity.adaptivePlatformDensity,
     // cardTheme / dialogTheme intentionally NOT passed to the constructor:
     // their parameter type was renamed CardTheme->CardThemeData and
@@ -65,17 +77,17 @@ ThemeData buildGlassTheme() {
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      foregroundColor: Colors.white,
-      titleTextStyle: const TextStyle(
+      foregroundColor: fg,
+      titleTextStyle: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w700,
-        color: Colors.white,
+        color: fg,
         letterSpacing: 0.2,
       ),
     ),
-    listTileTheme: const ListTileThemeData(
-      iconColor: Color(0xCCD9E6E1),
-      textColor: Colors.white,
+    listTileTheme: ListTileThemeData(
+      iconColor: subtle,
+      textColor: fg,
     ),
     dividerTheme: DividerThemeData(
       color: _glassBorder,
@@ -84,8 +96,8 @@ ThemeData buildGlassTheme() {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: _glassFill,
-      hintStyle: TextStyle(color: Colors.white.withOpacity(0.45)),
-      labelStyle: TextStyle(color: Colors.white.withOpacity(0.75)),
+      hintStyle: TextStyle(color: subtle.withOpacity(0.6)),
+      labelStyle: TextStyle(color: subtle),
       floatingLabelStyle: const TextStyle(color: _accent),
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -102,8 +114,8 @@ ThemeData buildGlassTheme() {
     ),
     dropdownMenuTheme: DropdownMenuThemeData(
       menuStyle: MenuStyle(
-        backgroundColor:
-            WidgetStatePropertyAll(Color(0xF2123330).withOpacity(0.98)),
+        backgroundColor: WidgetStatePropertyAll(
+            (isDark ? Color(0xF2123330) : Color(0xF2F5FBF8)).withOpacity(0.98)),
         shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: kGlassRadius)),
         side: const WidgetStatePropertyAll(BorderSide(color: _glassBorder)),
@@ -120,7 +132,7 @@ ThemeData buildGlassTheme() {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white,
+        foregroundColor: fg,
         side: const BorderSide(color: _glassBorder),
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -139,14 +151,16 @@ ThemeData buildGlassTheme() {
       backgroundColor: _glassFill,
       selectedColor: _accent.withOpacity(0.35),
       side: const BorderSide(color: _glassBorder),
-      labelStyle: const TextStyle(color: Colors.white, fontSize: 12.5),
-      secondaryLabelStyle: const TextStyle(color: Colors.white, fontSize: 12.5),
+      labelStyle: TextStyle(color: fg, fontSize: 12.5),
+      secondaryLabelStyle: TextStyle(color: fg, fontSize: 12.5),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      backgroundColor: const Color(0xE610302B),
-      contentTextStyle: const TextStyle(color: Colors.white),
+      backgroundColor: isDark
+          ? const Color(0xE610302B)
+          : const Color(0xE6E4F1EC),
+      contentTextStyle: TextStyle(color: fg),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
     navigationBarTheme: NavigationBarThemeData(
@@ -162,15 +176,13 @@ ThemeData buildGlassTheme() {
               ? FontWeight.w700
               : FontWeight.w500,
           color: states.contains(WidgetState.selected)
-              ? Colors.white
-              : Colors.white.withOpacity(0.6),
+              ? fg
+              : subtle,
         ),
       ),
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
-          color: states.contains(WidgetState.selected)
-              ? Colors.white
-              : Colors.white.withOpacity(0.6),
+          color: states.contains(WidgetState.selected) ? fg : subtle,
         ),
       ),
     ),
@@ -191,7 +203,7 @@ ThemeData buildGlassTheme() {
   // don't name either class at all: ThemeData.cardTheme/dialogTheme getters
   // are dynamic-copied via ThemeExtension-free reflection below.
   theme = _applyGlassCard(theme);
-  theme = _applyGlassDialog(theme);
+  theme = _applyGlassDialog(theme, isDark: isDark);
   return theme;
 }
 
@@ -212,20 +224,21 @@ ThemeData _applyGlassCard(ThemeData base) {
   return (base as dynamic).copyWith(cardTheme: copied) as ThemeData;
 }
 
-ThemeData _applyGlassDialog(ThemeData base) {
+ThemeData _applyGlassDialog(ThemeData base, {required bool isDark}) {
   final Object? dt = base.dialogTheme as Object?;
   if (dt == null) return base;
+  final fg = isDark ? Colors.white : const Color(0xFF0C2A24);
   final dynamic copied = (dt as dynamic).copyWith(
-    backgroundColor: const Color(0xF210302B),
+    backgroundColor:
+        isDark ? const Color(0xF210302B) : const Color(0xF2F5FBF8),
     surfaceTintColor: Colors.transparent,
     shape: RoundedRectangleBorder(
       borderRadius: const BorderRadius.all(Radius.circular(22)),
       side: BorderSide(color: _glassBorder),
     ),
-    titleTextStyle: const TextStyle(
-        color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700),
-    contentTextStyle: TextStyle(
-        color: Colors.white.withOpacity(0.85), fontSize: 14.5),
+    titleTextStyle: TextStyle(
+        color: fg, fontSize: 19, fontWeight: FontWeight.w700),
+    contentTextStyle: TextStyle(color: fg.withOpacity(0.85), fontSize: 14.5),
   );
   return (base as dynamic).copyWith(dialogTheme: copied) as ThemeData;
 }
