@@ -1,6 +1,10 @@
-/// Authenticated app shell: dashboard + tab navigation (Вакансии / Кандидаты /
-/// Воронка / Компании [+ Пользователи для админа]) with an IndexedStack so
-/// every tab keeps its state (search text, filters, loaded pages).
+/// Authenticated app shell: dashboard + tab navigation with an IndexedStack
+/// so every tab keeps its state (search text, filters, loaded pages).
+///
+/// Role hierarchy (mirrors backend RBAC):
+///   admin   — Главная · Вакансии · Кандидаты · Воронка · Компании · Пользователи;
+///   manager — Главная · Вакансии · Кандидаты · Воронка · Компании;
+///   worker  — Главная · Мои кейсы (назначенные отклики) · Вакансии.
 library;
 
 import 'package:flutter/material.dart';
@@ -36,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _candidateCount;
   int? _newAppCount;
   int? _hiredCount;
+  int? _myCaseCount; // assigned to the current user (worker/manager view)
   bool _statsLoading = false;
 
   /// Currently selected bottom-navigation tab.
@@ -49,20 +54,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadStats() async {
     setState(() => _statsLoading = true);
-    final api = AppScope.of(context).api;
+    final scope = AppScope.of(context);
+    final api = scope.api;
+    final user = scope.user!;
     try {
       final results = await Future.wait([
         api.get('/vacancies', {'page_size': 1}),
         api.get('/candidates', {'page_size': 1}),
         api.get('/applications', {'page_size': 1, 'status': 'new'}),
         api.get('/applications', {'page_size': 1, 'status': 'hired'}),
+        // «mine» is scoped by the server to the current user's assignments.
+        api.get('/applications', {'page_size': 1, 'mine': true}),
       ]);
       if (!mounted) return;
       setState(() {
         _vacancyCount = results[0]['total'];
         _candidateCount = results[1]['total'];
-        _newAppCount = results[2]['total'];
+        _newAppCount = user.canManage ? results[2]['total'] : null;
         _hiredCount = results[3]['total'];
+        _myCaseCount = results[4]['total'];
         _statsLoading = false;
       });
     } catch (e) {
@@ -87,16 +97,35 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? 'Добрый день'
                 : 'Добрый вечер';
 
-    // Tab order is fixed; the admin tab is appended only for admins, so the
-    // indices of the destinations below must stay in sync with this list.
-    final tabs = <Widget>[
-      _dashboard(user, greeting, scope),
-      const VacanciesScreen(),
-      const CandidatesScreen(),
-      const ApplicationsScreen(),
-      const CompaniesScreen(),
-      if (user.isAdmin) const UsersScreen(),
+    // ----- role-aware tab sets -------------------------------------------------
+    // Tabs and destinations are built together so indices always match.
+    final tabs = <Widget>[if (user.canManage) _dashboard(user, greeting, scope)];
+    final dests = <_Dest>[
+      if (user.canManage) const _Dest(Glyph.dashboard, 'Главная'),
     ];
+
+    if (user.role == 'worker') {
+      // Worker: personal queue first — it is their main workspace.
+      tabs.add(const ApplicationsScreen(mineOnly: true));
+      dests.add(const _Dest(Glyph.kanban, 'Мои кейсы'));
+      tabs.add(const VacanciesScreen());
+      dests.add(const _Dest(Glyph.briefcase, 'Вакансии'));
+    } else {
+      tabs.add(const VacanciesScreen());
+      dests.add(const _Dest(Glyph.briefcase, 'Вакансии'));
+      tabs.add(const CandidatesScreen());
+      dests.add(const _Dest(Glyph.people, 'Кандидаты'));
+      tabs.add(const ApplicationsScreen());
+      dests.add(const _Dest(Glyph.kanban, 'Воронка'));
+      tabs.add(const CompaniesScreen());
+      dests.add(const _Dest(Glyph.building, 'Компании'));
+      if (user.isAdmin) {
+        tabs.add(const UsersScreen());
+        dests.add(const _Dest(Glyph.server, 'Люди'));
+      }
+    }
+
+    if (_tab >= tabs.length) _tab = 0;
 
     return Scaffold(
       extendBody: true, // let content scroll under the glass nav bar
@@ -107,14 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: _GlassNavBar(
             index: _tab,
             onTap: (i) => setState(() => _tab = i),
-            destinations: [
-              const _Dest(Glyph.dashboard, 'Главная'),
-              const _Dest(Glyph.briefcase, 'Вакансии'),
-              const _Dest(Glyph.people, 'Кандидаты'),
-              const _Dest(Glyph.kanban, 'Воронка'),
-              const _Dest(Glyph.building, 'Компании'),
-              if (user.isAdmin) const _Dest(Glyph.server, 'Люди'),
-            ],
+            destinations: dests,
           ),
         ),
       ),
@@ -181,7 +203,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
 
-            // -------- quick stats
+            // -------- quick stats (manager/admin see the whole funnel,
+            // worker sees their own queue)
             Row(
               children: [
                 Expanded(
@@ -191,61 +214,91 @@ class _HomeScreenState extends State<HomeScreen> {
                         value: _vacancyCount,
                         loading: _statsLoading)),
                 const SizedBox(width: 8),
-                Expanded(
-                    child: _StatTile(
-                        glyph: Glyph.people,
-                        label: 'Кандидаты',
-                        value: _candidateCount,
-                        loading: _statsLoading)),
+                if (user.canManage)
+                  Expanded(
+                      child: _StatTile(
+                          glyph: Glyph.people,
+                          label: 'Кандидаты',
+                          value: _candidateCount,
+                          loading: _statsLoading))
+                else
+                  Expanded(
+                      child: _StatTile(
+                          glyph: Glyph.kanban,
+                          label: 'Мои кейсы',
+                          value: _myCaseCount,
+                          loading: _statsLoading)),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                    child: _StatTile(
-                        glyph: Glyph.send,
-                        label: 'Новых откликов',
-                        value: _newAppCount,
-                        loading: _statsLoading)),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: _StatTile(
-                        glyph: Glyph.chart,
-                        label: 'Трудоустроено',
-                        value: _hiredCount,
-                        loading: _statsLoading)),
-              ],
-            ),
+            if (user.canManage) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                      child: _StatTile(
+                          glyph: Glyph.send,
+                          label: 'Новых откликов',
+                          value: _newAppCount,
+                          loading: _statsLoading)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: _StatTile(
+                          glyph: Glyph.chart,
+                          label: 'Трудоустроено',
+                          value: _hiredCount,
+                          loading: _statsLoading)),
+                ],
+              ),
+            ] else ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                      child: _StatTile(
+                          glyph: Glyph.chart,
+                          label: 'Трудоустроено',
+                          value: _hiredCount,
+                          loading: _statsLoading)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: _StatTile(
+                          glyph: Glyph.person,
+                          label: 'Роль',
+                          textValue: user.roleLabel,
+                          loading: false)),
+                ],
+              ),
+            ],
             const SizedBox(height: 16),
 
             // -------- navigation
             Text('Разделы', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             _NavCard(
-                glyph: Glyph.briefcase,
-                title: 'Вакансии',
-                subtitle: 'Поиск, фильтры, пагинация, создание и правка',
-                onTap: () => _openSection(1)),
-            _NavCard(
-                glyph: Glyph.people,
-                title: 'Кандидаты',
-                subtitle: 'База соискателей, заметки рекрутеров, история откликов',
-                onTap: () => _openSection(2)),
-            _NavCard(
                 glyph: Glyph.kanban,
-                title: 'Воронка найма',
+                title: user.canManage ? 'Воронка найма' : 'Мои кейсы',
                 subtitle: user.canManage
                     ? 'Kanban-доска: перетаскивание карточек между этапами'
-                    : 'Этапы обработки откликов',
-                onTap: () => _openSection(3)),
+                    : 'Отклики, назначенные лично вам',
+                onTap: () => _openSection(user.canManage ? 3 : 0)),
             _NavCard(
-                glyph: Glyph.building,
-                title: 'Компании',
-                subtitle: user.canManage
-                    ? 'Партнёры и контактные лица'
-                    : 'Просмотр компаний-партнёров',
-                onTap: () => _openSection(4)),
+                glyph: Glyph.briefcase,
+                title: 'Вакансии',
+                subtitle: 'Поиск, фильтры, пагинация'
+                    '${user.canManage ? ', создание и правка' : ''}',
+                onTap: () => _openSection(user.canManage ? 1 : 1)),
+            if (user.canManage)
+              _NavCard(
+                  glyph: Glyph.people,
+                  title: 'Кандидаты',
+                  subtitle: 'База соискателей, заметки рекрутеров, история откликов',
+                  onTap: () => _openSection(2)),
+            if (user.canManage)
+              _NavCard(
+                  glyph: Glyph.building,
+                  title: 'Компании',
+                  subtitle: 'Партнёры и контактные лица',
+                  onTap: () => _openSection(4)),
             if (user.isAdmin)
               _NavCard(
                   glyph: Glyph.server,
@@ -263,12 +316,14 @@ class _StatTile extends StatelessWidget {
   final Glyph glyph;
   final String label;
   final int? value;
+  final String? textValue;
   final bool loading;
 
   const _StatTile(
       {required this.glyph,
       required this.label,
-      required this.value,
+      this.value,
+      this.textValue,
       required this.loading});
 
   @override
@@ -284,7 +339,7 @@ class _StatTile extends StatelessWidget {
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text('${value ?? '—'}',
+                  : Text(textValue ?? '${value ?? '—'}',
                       style: Theme.of(context).textTheme.titleLarge),
               Text(label,
                   textAlign: TextAlign.center,

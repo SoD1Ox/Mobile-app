@@ -144,6 +144,7 @@ class ApplicationItem {
   final int candidateId;
   final int vacancyId;
   final int? managerId;
+  final int? assignedWorkerId;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -153,6 +154,7 @@ class ApplicationItem {
         candidateId = j['candidate_id'],
         vacancyId = j['vacancy_id'],
         managerId = j['manager_id'],
+        assignedWorkerId = j['assigned_worker_id'],
         createdAt = DateTime.parse(j['created_at']),
         updatedAt = DateTime.parse(j['updated_at']);
 

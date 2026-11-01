@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.dependencies.auth import AdminUser, CurrentUser, ManagerOrAdmin
+from app.api.dependencies.auth import AdminUser, CurrentUser
 from app.api.dependencies.providers import get_application_service
 from app.dto.application import ApplicationCreate, ApplicationRead, ApplicationUpdate
 from app.dto.common import Page, PageParams
@@ -117,14 +117,28 @@ def create_application(
 
 
 @router.patch(
-    "/{application_id}", response_model=ApplicationRead, summary="Move pipeline status (manager/admin)"
+    "/{application_id}", response_model=ApplicationRead,
+    summary="Move pipeline status / assign responsible",
 )
 def update_application(
     application_id: int,
     data: ApplicationUpdate,
-    current_user: ManagerOrAdmin,
+    current_user: CurrentUser,
     service: ApplicationService = Depends(get_application_service),
 ) -> ApplicationRead:
+    """Role hierarchy on write operations:
+
+    * manager/admin — full control: change status, reassign manager/worker;
+    * worker — may move status ONLY of applications assigned to them and
+      cannot reassign anybody.
+    """
+    if current_user.role == UserRole.WORKER:
+        app = service.get_application(application_id)
+        if app.assigned_worker_id != current_user.id:
+            raise _forbidden("This application is not assigned to you")
+        if data.manager_id is not None or data.assigned_worker_id is not None:
+            raise _forbidden("Workers cannot reassign applications")
+        data = ApplicationUpdate(status=data.status)
     try:
         return service.update_application(application_id, data)
     except (NotFoundError, ValidationError) as exc:

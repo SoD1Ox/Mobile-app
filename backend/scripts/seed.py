@@ -277,14 +277,27 @@ def main(force: bool = False) -> None:
             if (cid, vid) in pairs:
                 continue
             pairs.add((cid, vid))
+            st = random.choices(statuses, weights=weights)[0]
+            # Иерархия: взятые в работу этапы (review/interview/offer)
+            # закрепляются за ответственным исполнителем (worker).
+            assigned = worker_id if st in (
+                ApplicationStatus.REVIEW, ApplicationStatus.INTERVIEW,
+                ApplicationStatus.OFFER,
+            ) and random.random() < 0.7 else None
             session.add(Application(
                 candidate_id=cid, vacancy_id=vid,
-                status=random.choices(statuses, weights=weights)[0],
+                status=st,
                 manager_id=random.choice([None, manager_id]),
+                assigned_worker_id=assigned,
             ))
             created += 1
         session.flush()
-    print(f"applications: {created}")
+    with Vis(factory) as session:
+        n_assigned = session.scalar(
+            select(func.count()).select_from(Application)
+            .where(Application.assigned_worker_id == worker_id)
+        )
+    print(f"applications: {created} (assigned to worker: {n_assigned})")
 
     # ---------------------------------------------------------- comments
     with Vis(factory) as session:

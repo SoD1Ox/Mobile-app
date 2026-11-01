@@ -14,7 +14,8 @@ import 'candidate_detail_screen.dart';
 
 class ApplicationsScreen extends StatefulWidget {
   final int? vacancyId; // null => all vacancies
-  const ApplicationsScreen({super.key, this.vacancyId});
+  final bool mineOnly; // worker queue: only applications assigned to me
+  const ApplicationsScreen({super.key, this.vacancyId, this.mineOnly = false});
 
   @override
   State<ApplicationsScreen> createState() => _ApplicationsScreenState();
@@ -41,6 +42,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
       final raw = await api.get('/applications', {
         'page_size': 200,
         if (widget.vacancyId != null) 'vacancy_id': widget.vacancyId,
+        if (widget.mineOnly) 'mine': true,
       });
       final page = DataPage.fromJson(raw, ApplicationItem.fromJson);
       final candIds = page.items.map((e) => e.candidateId).toSet();
@@ -93,12 +95,18 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canManage = AppScope.read(context).user?.canManage ?? false;
+    final user = AppScope.read(context).user;
+    // Иерархия drag-n-drop: менеджер/админ тасают всю воронку; worker —
+    // только карточки, назначенные лично ему (бэкенд это же и проверяет).
+    final canDrag = (user?.canManage ?? false) ||
+        (user?.role == 'worker' && widget.mineOnly);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.vacancyId == null
-            ? 'Воронка найма'
-            : 'Отклики на вакансию'),
+        title: Text(widget.mineOnly
+            ? 'Мои кейсы'
+            : widget.vacancyId == null
+                ? 'Воронка найма'
+                : 'Отклики на вакансию'),
         actions: [
           GlassIconButton(Glyph.refresh, tooltip: 'Обновить', onPressed: _load),
         ],
@@ -129,7 +137,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     );
   }
 
-  Widget _buildColumn(String statusKey, double width, bool canManage) {
+  Widget _buildColumn(String statusKey, double width, bool canDrag) {
     final cards = _items.where((a) => a.status == statusKey).toList();
     final color = statusColor(statusKey);
     Widget column = Column(
@@ -157,7 +165,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
             padding: const EdgeInsets.only(bottom: 80),
             children: [
               for (final a in cards)
-                if (!canManage)
+                if (!canDrag)
                   _card(a)
                 else
                   Draggable<int>(
@@ -176,7 +184,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
         ),
       ],
     );
-    if (!canManage) return column;
+    if (!canDrag) return column;
     return DragTarget<int>(
       onAcceptWithDetails: (details) {
         final app = _items.firstWhere((a) => a.id == details.data);
