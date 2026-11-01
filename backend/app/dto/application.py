@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models.application import ApplicationStatus
 
@@ -42,6 +42,13 @@ class ApplicationRead(BaseModel):
     # Audit trail of pipeline moves ("new -> review (by 2 @ 2026-11-01T14:03)")
     prev_status: str | None = None
     status_history: list[str] = Field(default_factory=list)
+
+    @field_validator("status_history", mode="before")
+    @classmethod
+    def _split_history(cls, v):  # ORM stores newline-separated text
+        if isinstance(v, str):
+            return [s for s in v.split("\n") if s.strip()]
+        return v or []
     # Funnel completion fraction 0..1 (self-learning stat)
     completion_score: float | None = None
     # Denormalized display fields resolved from ORM relationships

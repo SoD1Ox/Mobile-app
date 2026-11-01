@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import field_validator, BaseModel, ConfigDict, Field
 
 from app.dto.skill import SkillRead
 
@@ -49,6 +49,13 @@ class VacancyRead(BaseModel):
     # Self-learning stats (filled by the service layer from application funnel)
     completion_score: float | None = None
     status_history: list[str] = Field(default_factory=list)
+
+    @field_validator("status_history", mode="before")
+    @classmethod
+    def _split_history(cls, v):
+        if isinstance(v, str):
+            return [x for x in v.split("\n") if x.strip()]
+        return v or []
     created_at: datetime
     updated_at: datetime
 
