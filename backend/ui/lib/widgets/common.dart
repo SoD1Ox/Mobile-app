@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import '../models/models.dart';
 import 'glass_icons.dart';
 import '../theme/glass.dart';
 
@@ -12,6 +13,7 @@ import '../theme/glass.dart';
 class AppTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
+  final String? hint;
   final String? Function(String?)? validator;
   final bool obscureText;
   final Widget? suffix;
@@ -22,6 +24,7 @@ class AppTextField extends StatelessWidget {
     super.key,
     required this.controller,
     required this.label,
+    this.hint,
     this.validator,
     this.obscureText = false,
     this.suffix,
@@ -39,7 +42,8 @@ class AppTextField extends StatelessWidget {
           maxLines: obscureText ? 1 : maxLines,
           keyboardType: keyboardType,
           style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(labelText: label, suffixIcon: suffix),
+          decoration: InputDecoration(
+              labelText: label, hintText: hint, suffixIcon: suffix),
         ),
       );
 }
@@ -224,6 +228,70 @@ class PagerBar extends StatelessWidget {
               onPressed: page < pages ? () => onChanged(page + 1) : null),
         ],
       ),
+    );
+  }
+}
+
+/// Horizontal hiring-funnel bars (new → review → interview → offer → hired).
+/// Used on the dashboard and the vacancy card.
+class FunnelBars extends StatelessWidget {
+  final Map<String, int> counts;
+  const FunnelBars({super.key, required this.counts});
+
+  @override
+  Widget build(BuildContext context) {
+    final max = counts.values.fold<int>(1, (a, b) => a > b ? a : b);
+    return Column(
+      children: [
+        for (final stage in ApplicationItem.pipelineOrder)
+          if (counts.containsKey(stage))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 110,
+                    child: Text(ApplicationItem.statusLabels[stage]!,
+                        style: const TextStyle(fontSize: 12.5)),
+                  ),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: counts[stage]! / max),
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, f, _) => Stack(
+                          children: [
+                            Container(height: 18, color: Colors.white.withOpacity(0.06)),
+                            FractionallySizedBox(
+                              widthFactor: f.clamp(0.03, 1.0),
+                              child: Container(
+                                height: 18,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(colors: [
+                                    statusColor(stage).withOpacity(0.85),
+                                    statusColor(stage).withOpacity(0.45),
+                                  ]),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 42,
+                    child: Text('${counts[stage]}',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                            fontSize: 12.5, fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ),
+      ],
     );
   }
 }
