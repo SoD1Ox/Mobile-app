@@ -10,9 +10,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.dependencies.auth import CurrentUser, ManagerOrAdmin
-from app.api.dependencies.providers import get_company_service
+from app.api.dependencies.providers import get_company_service, get_contact_service
 from app.dto.common import Page, PageParams
 from app.dto.company import CompanyCreate, CompanyRead, CompanyUpdate
+from app.dto.contact import ContactCreate, ContactRead, ContactUpdate
+from app.services.contact import ContactService
 from app.services.company import CompanyService
 from app.services.errors import DomainError, NotFoundError
 
@@ -83,6 +85,70 @@ def delete_company(
 ) -> dict[str, str]:
     try:
         service.delete_company(company_id)
+        return {"status": "deleted"}
+    except NotFoundError as exc:
+        raise _http_error(exc) from exc
+
+# ---------------------------------------------------------------- contacts ---
+# Contacts are nested under companies: /companies/{company_id}/contacts
+
+contact_router = APIRouter(prefix="/contacts", tags=["contacts"])
+
+
+@router.get("/{company_id}/contacts", response_model=list[ContactRead],
+            summary="Contacts of a company (authenticated)")
+def list_company_contacts(
+    company_id: int,
+    current_user: CurrentUser,
+    service: ContactService = Depends(get_contact_service),
+) -> list[ContactRead]:
+    return service.list_by_company(company_id)
+
+
+@contact_router.get("/{contact_id}", response_model=ContactRead, summary="Get one contact")
+def get_contact(
+    contact_id: int,
+    current_user: CurrentUser,
+    service: ContactService = Depends(get_contact_service),
+) -> ContactRead:
+    try:
+        return service.get_contact(contact_id)
+    except NotFoundError as exc:
+        raise _http_error(exc) from exc
+
+
+@contact_router.post("", response_model=ContactRead, status_code=status.HTTP_201_CREATED,
+                     summary="Create a contact (manager/admin)")
+def create_contact(
+    data: ContactCreate,
+    current_user: ManagerOrAdmin,
+    service: ContactService = Depends(get_contact_service),
+) -> ContactRead:
+    return service.create_contact(data)
+
+
+@contact_router.put("/{contact_id}", response_model=ContactRead,
+                    summary="Update a contact (manager/admin)")
+def update_contact(
+    contact_id: int,
+    data: ContactUpdate,
+    current_user: ManagerOrAdmin,
+    service: ContactService = Depends(get_contact_service),
+) -> ContactRead:
+    try:
+        return service.update_contact(contact_id, data)
+    except NotFoundError as exc:
+        raise _http_error(exc) from exc
+
+
+@contact_router.delete("/{contact_id}", summary="Delete a contact (manager/admin)")
+def delete_contact(
+    contact_id: int,
+    current_user: ManagerOrAdmin,
+    service: ContactService = Depends(get_contact_service),
+) -> dict[str, str]:
+    try:
+        service.delete_contact(contact_id)
         return {"status": "deleted"}
     except NotFoundError as exc:
         raise _http_error(exc) from exc

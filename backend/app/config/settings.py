@@ -13,10 +13,20 @@ class Settings(BaseSettings):
     # --- Database (PostgreSQL) ---
     db_host: str = "127.0.0.1"
     db_port: int = 5432
-    db_name: str = "mobile_app"
+    db_name: str = "staffing_agency"
     db_user: str = "app_user"
     db_password: str = "app_pass"
     database_url: str | None = None  # env: DATABASE_URL
+
+    def model_post_init(self, __context) -> None:
+        """Build database_url from DB_* parts if DATABASE_URL is not set."""
+        if not self.database_url:
+            object.__setattr__(
+                self,
+                "database_url",
+                f"postgresql+psycopg2://{self.db_user}:{self.db_password}"
+                f"@{self.db_host}:{self.db_port}/{self.db_name}",
+            )
 
     # --- Security / JWT ---
     secret_key: str = "change-me-in-production-9f8a7b6c5d4e3f2a1b0c"

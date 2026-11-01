@@ -9,6 +9,7 @@ from __future__ import annotations
 from app.services.application import ApplicationService
 from app.services.candidate import CandidateService
 from app.services.company import CompanyService
+from app.services.contact import ContactService
 from app.services.skill import SkillService
 from app.services.user import UserService
 from app.services.vacancy import VacancyService
@@ -36,3 +37,7 @@ def get_application_service() -> ApplicationService:
 
 def get_skill_service() -> SkillService:
     return SkillService()
+
+
+def get_contact_service() -> ContactService:
+    return ContactService()
