@@ -118,6 +118,35 @@ COMMENT_TEXTS = [
 
 def main(force: bool = False) -> None:
     factory = get_session_factory()
+
+    # --- Self-healing bootstrap -------------------------------------------
+    # If the schema is missing (user forgot `alembic upgrade head`), create
+    # all tables from ORM metadata and stamp the base alembic revision, so
+    # later `alembic upgrade head` remains a clean no-op.
+    from sqlalchemy import inspect as sa_inspect
+
+    from app.db.base import Base
+    from app.db.vis import get_engine
+    import app.models  # noqa: F401  (register mappers on Base.metadata)
+
+    engine = get_engine()
+    existing = set(sa_inspect(engine).get_table_names())
+    if "users" not in existing:
+        print("Schema missing -> creating tables from ORM metadata ...")
+        Base.metadata.create_all(engine)
+        try:
+            with engine.begin() as conn:
+                conn.exec_driver_sql(
+                    "CREATE TABLE IF NOT EXISTS alembic_version ("
+                    "version_num VARCHAR(32) NOT NULL, "
+                    "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))")
+                conn.exec_driver_sql(
+                    "INSERT INTO alembic_version VALUES ('a1f2c3d4e5b6') "
+                    "ON CONFLICT DO NOTHING")
+        except Exception:
+            pass  # non-fatal; alembic CLI still works afterwards
+        existing = set(sa_inspect(engine).get_table_names())
+
     with Vis(factory) as session:
         users_total = session.scalar(select(func.count()).select_from(User)) or 0
     if users_total and not force:
@@ -130,7 +159,8 @@ def main(force: bool = False) -> None:
             for table in ("applications", "comments", "candidates",
                           "vacancy_skills", "vacancies", "contacts",
                           "companies", "skills", "users"):
-                session.execute(text(f"DELETE FROM {table}"))
+                if table in existing:
+                    session.execute(text(f"DELETE FROM {table}"))
             session.commit()
             # Reset PK sequences so fresh inserts don't collide with old
             # auto-increment counters (PostgreSQL only; SQLite uses

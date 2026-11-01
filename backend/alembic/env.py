@@ -9,6 +9,40 @@ from app.config.settings import settings  # noqa: E402
 from app.db.base import Base  # noqa: E402
 import app.models  # noqa: F401,E402  (register all mappers on Base.metadata)
 
+# --- Alembic self-healing ---------------------------------------------------
+# If the user's local copy contains leftover migration files from an old
+# snapshot (duplicate revision ids -> "Multiple head revisions are present"),
+# keep only ONE file per revision id before scanning the script directory.
+def _dedupe_version_files() -> None:
+    versions_dir = Path(__file__).resolve().parent / "versions"
+    if not versions_dir.is_dir():
+        return
+    by_rev: dict[str, list[Path]] = {}
+    for py in sorted(versions_dir.glob("*.py")):
+        try:
+            text = py.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        marker = "revision: str = "
+        idx = text.find(marker)
+        if idx == -1:
+            continue
+        rest = text[idx + len(marker):]
+        rev = rest.split("\n", 1)[0].strip().strip("'\"")
+        by_rev.setdefault(rev, []).append(py)
+    for rev, files in by_rev.items():
+        for extra in files[1:]:
+            extra.unlink(missing_ok=True)
+        # Invalidate any cached bytecode for this revision's files so a
+        # renamed/removed module can never be picked up from __pycache__.
+        cache_dir = versions_dir / "__pycache__"
+        if cache_dir.is_dir():
+            for pyc in cache_dir.glob("*.pyc"):
+                pyc.unlink(missing_ok=True)
+
+
+_dedupe_version_files()
+
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
