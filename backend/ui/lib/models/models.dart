@@ -1,4 +1,6 @@
-/// Plain data models mirroring the backend DTOs (API contract).
+/// Plain data models mirroring the staffing-agency backend DTOs
+/// (API contract).  ORM models live on the server; the client only ever
+/// sees these Pydantic-shaped JSON payloads.
 library;
 
 class AppUser {
@@ -23,125 +25,183 @@ class AppUser {
 
   String get roleLabel => switch (role) {
         'admin' => 'Администратор',
-        'manager' => 'Менеджер',
+        'manager' => 'Рекрутер',
         _ => 'Сотрудник',
       };
 }
 
-class TaskItem {
+/// Vacancy — open position of a partner company (main list entity).
+class VacancyItem {
   final int id;
   final String title;
   final String? description;
-  final String status; // new | in_progress | done | archived
-  final String priority; // low | medium | high | critical
-  final int estimateHours;
-  final int projectId;
-  final int authorId;
-  final List<TagItem> tags;
+  final double? salaryFrom;
+  final double? salaryTo;
+  final String? city;
+  final bool remote;
+  final int companyId;
+  final List<SkillItem> skills;
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  TaskItem.fromJson(Map<String, dynamic> j)
+  VacancyItem.fromJson(Map<String, dynamic> j)
       : id = j['id'],
         title = j['title'],
         description = j['description'],
-        status = j['status'],
-        priority = j['priority'],
-        estimateHours = j['estimate_hours'] ?? 0,
-        projectId = j['project_id'],
-        authorId = j['author_id'],
-        tags = ((j['tags'] as List?) ?? [])
-            .map((e) => TagItem.fromJson(e))
+        salaryFrom = _toDouble(j['salary_from']),
+        salaryTo = _toDouble(j['salary_to']),
+        city = j['city'],
+        remote = j['remote'] ?? false,
+        companyId = j['company_id'],
+        skills = ((j['skills'] as List?) ?? [])
+            .map((e) => SkillItem.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList(),
         createdAt = DateTime.parse(j['created_at']),
         updatedAt = DateTime.parse(j['updated_at']);
 
-  static const statusLabels = {
-    'new': 'Новая',
-    'in_progress': 'В работе',
-    'review': 'На проверке',
-    'done': 'Готово',
-    'canceled': 'Отменена',
-  };
-  static const priorityLabels = {
-    'low': 'Низкий',
-    'medium': 'Средний',
-    'high': 'Высокий',
-    'critical': 'Критический',
-  };
+  String get salaryLabel {
+    String fmt(double v) {
+      final s = v.toStringAsFixed(0);
+      final buf = StringBuffer();
+      for (var i = 0; i < s.length; i++) {
+        if (i > 0 && (s.length - i) % 3 == 0) buf.write(' ');
+        buf.write(s[i]);
+      }
+      return buf.toString();
+    }
 
-  String get statusLabel => statusLabels[status] ?? status;
-  String get priorityLabel => priorityLabels[priority] ?? priority;
+    if (salaryFrom == null && salaryTo == null) return 'Зарплата не указана';
+    if (salaryFrom != null && salaryTo != null) {
+      return '${fmt(salaryFrom!)} – ${fmt(salaryTo!)} ₽';
+    }
+    if (salaryFrom != null) return 'от ${fmt(salaryFrom!)} ₽';
+    return 'до ${fmt(salaryTo!)} ₽';
+  }
 }
 
-class ProjectItem {
+/// Candidate — job seeker in the agency database.
+class CandidateItem {
   final int id;
-  final String name;
-  final String? description;
-  final double budget;
-  final int clientId;
+  final String fullName;
+  final String? email;
+  final String? phone;
+  final String? city;
+  final String? specialization;
+  final int experienceYears;
+  final String? resumeUrl;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  ProjectItem.fromJson(Map<String, dynamic> j)
+  CandidateItem.fromJson(Map<String, dynamic> j)
       : id = j['id'],
-        name = j['name'],
-        description = j['description'],
-        budget = double.tryParse('${j['budget']}') ?? 0,
-        clientId = j['client_id'];
+        fullName = j['full_name'],
+        email = j['email'],
+        phone = j['phone'],
+        city = j['city'],
+        specialization = j['specialization'],
+        experienceYears = j['experience_years'] ?? 0,
+        resumeUrl = j['resume_url'],
+        createdAt = DateTime.parse(j['created_at']),
+        updatedAt = DateTime.parse(j['updated_at']);
+
+  String get expLabel {
+    final n = experienceYears;
+    if (n == 0) return 'Без опыта';
+    final mod10 = n % 10;
+    final mod100 = n % 100;
+    final word = mod10 == 1 && mod100 != 11
+        ? 'год'
+        : (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14))
+            ? 'года'
+            : 'лет';
+    return '$n $word';
+  }
 }
 
-class ClientItem {
+/// Company — partner employer.
+class CompanyItem {
   final int id;
   final String name;
   final String? email;
   final String? phone;
   final String? address;
+  final String? industry;
 
-  ClientItem.fromJson(Map<String, dynamic> j)
+  CompanyItem.fromJson(Map<String, dynamic> j)
       : id = j['id'],
         name = j['name'],
         email = j['email'],
         phone = j['phone'],
-        address = j['address'];
+        address = j['address'],
+        industry = j['industry'];
 }
 
-class ContactItem {
+/// Application — a candidate applying to a vacancy (high-volume entity)
+/// moving through the hiring pipeline.
+class ApplicationItem {
   final int id;
-  final int clientId;
-  final String fullName;
-  final String? position;
-  final String? email;
-  final String? phone;
+  final String status; // new|review|interview|offer|hired|rejected
+  final int candidateId;
+  final int vacancyId;
+  final int? managerId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  ContactItem.fromJson(Map<String, dynamic> j)
+  ApplicationItem.fromJson(Map<String, dynamic> j)
       : id = j['id'],
-        clientId = j['client_id'],
-        fullName = j['full_name'],
-        position = j['position'],
-        email = j['email'],
-        phone = j['phone'];
+        status = j['status'],
+        candidateId = j['candidate_id'],
+        vacancyId = j['vacancy_id'],
+        managerId = j['manager_id'],
+        createdAt = DateTime.parse(j['created_at']),
+        updatedAt = DateTime.parse(j['updated_at']);
+
+  static const statusLabels = {
+    'new': 'Новый отклик',
+    'review': 'Рассмотрение',
+    'interview': 'Интервью',
+    'offer': 'Оффер',
+    'hired': 'Трудоустроен',
+    'rejected': 'Отказ',
+  };
+
+  /// Ordered pipeline used by the kanban board and the detail screen.
+  static const pipelineOrder = [
+    'new',
+    'review',
+    'interview',
+    'offer',
+    'hired',
+  ];
+
+  String get statusLabel => statusLabels[status] ?? status;
 }
 
-class TagItem {
+/// Skill — tag attached to vacancies (many-to-many).
+class SkillItem {
   final int id;
   final String name;
 
-  TagItem.fromJson(Map<String, dynamic> j)
+  SkillItem.fromJson(Map<String, dynamic> j)
       : id = j['id'],
         name = j['name'];
 }
 
+/// Recruiter note about a candidate.
 class CommentItem {
   final int id;
   final String text;
-  final int taskId;
+  final int candidateId;
   final int authorId;
+  final String? authorName;
   final DateTime createdAt;
 
   CommentItem.fromJson(Map<String, dynamic> j)
       : id = j['id'],
         text = j['text'],
-        taskId = j['task_id'],
+        candidateId = j['candidate_id'],
         authorId = j['author_id'],
+        authorName = j['author_name'],
         createdAt = DateTime.parse(j['created_at']);
 }
 
@@ -153,7 +213,8 @@ class DataPage<T> {
   final int pageSize;
   final int pages;
 
-  DataPage.fromJson(Map<String, dynamic> j, T Function(Map<String, dynamic> e) parse)
+  DataPage.fromJson(
+      Map<String, dynamic> j, T Function(Map<String, dynamic> e) parse)
       : items = ((j['items'] as List?) ?? [])
             .map((e) => parse(Map<String, dynamic>.from(e as Map)))
             .toList(),
@@ -164,3 +225,6 @@ class DataPage<T> {
 
   bool get hasMore => page < pages;
 }
+
+double? _toDouble(dynamic v) =>
+    v == null ? null : double.tryParse('$v');

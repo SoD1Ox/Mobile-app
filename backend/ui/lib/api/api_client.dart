@@ -1,4 +1,4 @@
-/// HTTP client for the Task-tracker FastAPI backend.
+/// HTTP client for the staffing-agency FastAPI backend.
 ///
 /// Single place that knows: base URL, auth token storage (SharedPreferences),
 /// JSON decoding and error-message extraction.  All screens go through this
