@@ -316,11 +316,12 @@ def main(force: bool = False) -> None:
                 continue
             pairs.add((cid, vid))
             st = random.choices(statuses, weights=weights)[0]
-            # Иерархия: взятые в работу этапы (review/interview/offer)
-            # закрепляются за ответственным исполнителем (worker).
+            # Иерархия: взятые в работу этапы (review/interview/offer) и
+            # завершённые наймы (hired) закрепляются за ответственным
+            # исполнителем (worker) — иначе у рабочего пустая воронка.
             assigned = worker_id if st in (
                 ApplicationStatus.REVIEW, ApplicationStatus.INTERVIEW,
-                ApplicationStatus.OFFER,
+                ApplicationStatus.OFFER, ApplicationStatus.HIRED,
             ) and random.random() < 0.7 else None
             session.add(Application(
                 candidate_id=cid, vacancy_id=vid,

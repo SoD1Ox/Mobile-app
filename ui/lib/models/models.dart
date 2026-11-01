@@ -12,11 +12,11 @@ class AppUser {
   final bool isActive;
 
   AppUser.fromJson(Map<String, dynamic> j)
-      : id = j['id'],
-        username = j['username'],
-        email = j['email'],
-        fullName = j['full_name'],
-        role = j['role'],
+      : id = (j['id'] as num?)?.toInt() ?? 0,
+        username = (j['username'] ?? '').toString(),
+        email = (j['email'] ?? '').toString(),
+        fullName = (j['full_name'] ?? '').toString(),
+        role = (j['role'] ?? 'worker').toString(),
         isActive = j['is_active'] ?? true;
 
   bool get isAdmin => role == 'admin';
@@ -45,7 +45,7 @@ class VacancyItem {
   final DateTime updatedAt;
 
   VacancyItem.fromJson(Map<String, dynamic> j)
-      : id = j['id'],
+      : id = (j['id'] as num?)?.toInt() ?? 0,
         title = (j['title'] ?? 'Без названия').toString(),
         description = j['description'],
         salaryFrom = _toDouble(j['salary_from']),
@@ -93,13 +93,13 @@ class CandidateItem {
   final DateTime updatedAt;
 
   CandidateItem.fromJson(Map<String, dynamic> j)
-      : id = j['id'],
-        fullName = j['full_name'],
+      : id = (j['id'] as num?)?.toInt() ?? 0,
+        fullName = (j['full_name'] ?? 'Кандидат').toString(),
         email = j['email'],
         phone = j['phone'],
         city = j['city'],
         specialization = j['specialization'],
-        experienceYears = j['experience_years'] ?? 0,
+        experienceYears = (j['experience_years'] as num?)?.toInt() ?? 0,
         resumeUrl = j['resume_url'],
         createdAt = _toDate(j['created_at']),
         updatedAt = _toDate(j['updated_at']);
@@ -128,7 +128,7 @@ class CompanyItem {
   final String? industry;
 
   CompanyItem.fromJson(Map<String, dynamic> j)
-      : id = j['id'],
+      : id = (j['id'] as num?)?.toInt() ?? 0,
         name = (j['name'] ?? 'Компания').toString(),
         email = j['email'],
         phone = j['phone'],
@@ -160,12 +160,12 @@ class ApplicationItem {
   final DateTime updatedAt;
 
   ApplicationItem.fromJson(Map<String, dynamic> j)
-      : id = j['id'],
-        status = j['status'],
-        candidateId = j['candidate_id'],
-        vacancyId = j['vacancy_id'],
-        managerId = j['manager_id'],
-        assignedWorkerId = j['assigned_worker_id'],
+      : id = (j['id'] as num?)?.toInt() ?? 0,
+        status = (j['status'] ?? 'new').toString(),
+        candidateId = (j['candidate_id'] as num?)?.toInt() ?? 0,
+        vacancyId = (j['vacancy_id'] as num?)?.toInt() ?? 0,
+        managerId = (j['manager_id'] as num?)?.toInt(),
+        assignedWorkerId = (j['assigned_worker_id'] as num?)?.toInt(),
         candidateName = j['candidate_name'] as String?,
         vacancyTitle = j['vacancy_title'] as String?,
         companyName = j['company_name'] as String?,
@@ -250,8 +250,8 @@ class SkillItem {
   final String name;
 
   SkillItem.fromJson(Map<String, dynamic> j)
-      : id = j['id'],
-        name = j['name'];
+      : id = (j['id'] as num?)?.toInt() ?? 0,
+        name = (j['name'] ?? '').toString();
 }
 
 /// Recruiter note about a candidate.
@@ -264,10 +264,10 @@ class CommentItem {
   final DateTime createdAt;
 
   CommentItem.fromJson(Map<String, dynamic> j)
-      : id = j['id'],
-        text = j['text'],
-        candidateId = j['candidate_id'],
-        authorId = j['author_id'],
+      : id = (j['id'] as num?)?.toInt() ?? 0,
+        text = (j['text'] ?? '').toString(),
+        candidateId = (j['candidate_id'] as num?)?.toInt() ?? 0,
+        authorId = (j['author_id'] as num?)?.toInt() ?? 0,
         authorName = j['author_name'],
         createdAt = _toDate(j['created_at']);
 }
@@ -282,12 +282,12 @@ class ContactItem {
   final int companyId;
 
   ContactItem.fromJson(Map<String, dynamic> j)
-      : id = j['id'],
-        fullName = j['full_name'],
+      : id = (j['id'] as num?)?.toInt() ?? 0,
+        fullName = (j['full_name'] ?? 'Контакт').toString(),
         position = j['position'],
         phone = j['phone'],
         email = j['email'],
-        companyId = j['company_id'];
+        companyId = (j['company_id'] as num?)?.toInt() ?? 0;
 }
 
 /// Paginated envelope returned by list endpoints (large-data mechanism).
@@ -303,10 +303,10 @@ class DataPage<T> {
       : items = ((j['items'] as List?) ?? [])
             .map((e) => parse(Map<String, dynamic>.from(e as Map)))
             .toList(),
-        total = j['total'] ?? 0,
-        page = j['page'] ?? 1,
-        pageSize = j['page_size'] ?? 20,
-        pages = j['pages'] ?? 1;
+        total = (j['total'] as num?)?.toInt() ?? 0,
+        page = (j['page'] as num?)?.toInt() ?? 1,
+        pageSize = (j['page_size'] as num?)?.toInt() ?? 20,
+        pages = (j['pages'] as num?)?.toInt() ?? 1;
 
   bool get hasMore => page < pages;
 }
