@@ -23,6 +23,66 @@ class ApplicationRepository(
     model = Application
     read_dto = ApplicationRead
 
+    # ------------------------------------------------------------------ enrich
+    @staticmethod
+    def _enrich(session: Session, obj: Application) -> ApplicationRead:
+        """Build ApplicationRead with denormalized display fields.
+
+        Loads the related candidate / vacancy(+company) / users eagerly via
+        ``session.get`` so the DTO carries everything a client needs to render
+        a card without N+1 follow-up requests.
+        """
+        from app.models.candidate import Candidate
+        from app.models.user import User
+        from app.models.vacancy import Vacancy
+
+        read = ApplicationRead.model_validate(obj, from_attributes=True)
+        cand = session.get(Candidate, obj.candidate_id)
+        if cand is not None:
+            read.candidate_name = cand.full_name
+        vac = session.get(Vacancy, obj.vacancy_id)
+        if vac is not None:
+            read.vacancy_title = vac.title
+            read.salary_from = float(vac.salary_from) if vac.salary_from else None
+            read.salary_to = float(vac.salary_to) if vac.salary_to else None
+            if vac.company is not None:
+                read.company_name = vac.company.name
+        if obj.assigned_worker_id is not None:
+            w = session.get(User, obj.assigned_worker_id)
+            if w is not None:
+                read.assigned_worker_name = w.full_name
+        if obj.manager_id is not None:
+            m = session.get(User, obj.manager_id)
+            if m is not None:
+                read.manager_name = m.full_name
+        return read
+
+    def get_by_id(self, entity_id: int) -> ApplicationRead | None:
+        with Vis(self._factory) as session:
+            obj = session.get(Application, entity_id)
+            if obj is None:
+                return None
+            return self._enrich(session, obj)
+
+    def create(self, data: ApplicationCreate) -> ApplicationRead:
+        with Vis(self._factory) as session:
+            obj = Application(**data.model_dump())
+            session.add(obj)
+            session.commit()
+            session.refresh(obj)
+            return self._enrich(session, obj)
+
+    def update(self, entity_id: int, data: ApplicationUpdate) -> ApplicationRead | None:
+        with Vis(self._factory) as session:
+            obj = session.get(Application, entity_id)
+            if obj is None:
+                return None
+            for field, value in data.model_dump(exclude_unset=True).items():
+                setattr(obj, field, value)
+            session.commit()
+            session.refresh(obj)
+            return self._enrich(session, obj)
+
     def search_paginated(
         self,
         params: PageParams,
@@ -32,9 +92,26 @@ class ApplicationRepository(
         manager_id: int | None = None,
         assigned_worker_id: int | None = None,
     ) -> Page[ApplicationRead]:
-        """Pagination + filtering by vacancy / candidate / pipeline status."""
+        """Pagination + filtering by vacancy / candidate / pipeline status.
+
+        Rows are loaded with joined relations (candidate, vacancy->company,
+        responsible users) and returned as enriched DTOs — one request per
+        page, no N+1 on the client side.
+        """
+        from sqlalchemy.orm import joinedload
+
+        from app.models.vacancy import Vacancy
+
         with Vis(self._factory) as session:
-            stmt = select(Application)
+            stmt = (
+                select(Application)
+                .options(
+                    joinedload(Application.candidate),
+                    joinedload(Application.vacancy).joinedload(Vacancy.company),
+                    joinedload(Application.assigned_worker),
+                    joinedload(Application.manager),
+                )
+            )
             count_stmt = select(func.count()).select_from(Application)
 
             conditions = []
@@ -58,8 +135,8 @@ class ApplicationRepository(
                 stmt.order_by(Application.id.desc())
                 .offset((params.page - 1) * params.page_size)
                 .limit(params.page_size)
-            ).all()
-            items = [self._to_read(r) for r in rows]
+            ).unique().all()
+            items = [self._enrich(session, r) for r in rows]
             pages = (total + params.page_size - 1) // params.page_size
             return Page(
                 items=items, total=total, page=params.page,

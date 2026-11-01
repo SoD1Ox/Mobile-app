@@ -4,13 +4,21 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.application import ApplicationStatus
 
 
 class ApplicationCreate(BaseModel):
-    candidate_id: int = Field(gt=0)
+    candidate_id: int | None = Field(
+        default=None,
+        gt=0,
+        description="Existing candidate id; omit to create a self-application "
+                    "from the vacancy card (name is then required)",
+    )
+    full_name: str | None = Field(default=None, min_length=2, max_length=150)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=30)
     vacancy_id: int = Field(gt=0)
     manager_id: int | None = Field(default=None, gt=0)
     assigned_worker_id: int | None = Field(default=None, gt=0)
@@ -31,6 +39,16 @@ class ApplicationRead(BaseModel):
     vacancy_id: int
     manager_id: int | None
     assigned_worker_id: int | None
+    # Denormalized display fields resolved from ORM relationships
+    # (candidate/vacancy/company/users). Optional so the DTO stays usable
+    # even when a session cannot hydrate the relations.
+    candidate_name: str | None = None
+    vacancy_title: str | None = None
+    company_name: str | None = None
+    salary_from: float | None = None
+    salary_to: float | None = None
+    assigned_worker_name: str | None = None
+    manager_name: str | None = None
     created_at: datetime
     updated_at: datetime
 

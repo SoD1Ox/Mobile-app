@@ -56,8 +56,42 @@ class ApplicationService:
         return application
 
     def create_application(self, data: ApplicationCreate) -> ApplicationRead:
-        if self._candidate_repo.get_by_id(data.candidate_id) is None:
-            raise NotFoundError(f"Candidate {data.candidate_id} not found")
+        """Register an application.
+
+        Two flows:
+          * agency staff apply an existing candidate (``candidate_id``);
+          * self-application from the vacancy card — no candidate yet, then a
+            lightweight Candidate record is created from full_name/email/phone.
+        """
+        from app.dto.candidate import CandidateCreate
+
+        payload = data.model_dump()
+        candidate_id = payload.pop("candidate_id", None)
+        full_name = payload.pop("full_name", None)
+        email = payload.pop("email", None)
+        phone = payload.pop("phone", None)
+
+        if candidate_id is not None:
+            if self._candidate_repo.get_by_id(candidate_id) is None:
+                raise NotFoundError(f"Candidate {candidate_id} not found")
+        else:
+            if not full_name:
+                raise ValidationError(
+                    "Provide candidate_id or full_name for a self-application"
+                )
+            created = self._candidate_repo.create(
+                CandidateCreate(
+                    full_name=full_name,
+                    email=email,
+                    phone=phone,
+                    specialization=None,
+                    city=None,
+                    experience_years=0,
+                    resume_url=None,
+                )
+            )
+            candidate_id = created.id
+
         if self._vacancy_repo.get_by_id(data.vacancy_id) is None:
             raise NotFoundError(f"Vacancy {data.vacancy_id} not found")
         if data.manager_id is not None and self._user_repo.get_by_id(data.manager_id) is None:
@@ -67,9 +101,11 @@ class ApplicationService:
             and self._user_repo.get_by_id(data.assigned_worker_id) is None
         ):
             raise ValidationError(f"Worker {data.assigned_worker_id} does not exist")
-        if self._repo.exists_pair(data.candidate_id, data.vacancy_id):
+        if self._repo.exists_pair(candidate_id, data.vacancy_id):
             raise ConflictError("This candidate already applied to this vacancy")
-        return self._repo.create(data)
+        return self._repo.create(
+            ApplicationCreate(candidate_id=candidate_id, **payload)
+        )
 
     def update_application(self, application_id: int, data: ApplicationUpdate) -> ApplicationRead:
         self.get_application(application_id)  # 404 if missing

@@ -58,20 +58,31 @@ class _HomeScreenState extends State<HomeScreen> {
     final api = scope.api;
     final user = scope.user!;
     try {
+      // Only the queries relevant to the role — fast dashboard, no waiting
+      // for data the user cannot access anyway.
       final results = await Future.wait([
         api.get('/vacancies', {'page_size': 1}),
-        api.get('/candidates', {'page_size': 1}),
-        api.get('/applications', {'page_size': 1, 'status': 'new'}),
-        api.get('/applications', {'page_size': 1, 'status': 'hired'}),
+        if (user.canManage)
+          api.get('/candidates', {'page_size': 1})
+        else
+          Future.value(null),
+        if (user.canManage)
+          api.get('/applications', {'page_size': 1, 'status': 'new'})
+        else
+          Future.value(null),
+        if (user.canManage)
+          api.get('/applications', {'page_size': 1, 'status': 'hired'})
+        else
+          Future.value(null),
         // «mine» is scoped by the server to the current user's assignments.
         api.get('/applications', {'page_size': 1, 'mine': true}),
       ]);
       if (!mounted) return;
       setState(() {
         _vacancyCount = results[0]['total'];
-        _candidateCount = results[1]['total'];
-        _newAppCount = user.canManage ? results[2]['total'] : null;
-        _hiredCount = results[3]['total'];
+        _candidateCount = (results[1] as Map?)?['total'];
+        _newAppCount = user.canManage ? (results[2] as Map?)?['total'] : null;
+        _hiredCount = (results[3] as Map?)?['total'];
         _myCaseCount = results[4]['total'];
         _statsLoading = false;
       });
@@ -99,18 +110,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // ----- role-aware tab sets -------------------------------------------------
     // Tabs and destinations are built together so indices always match.
-    final tabs = <Widget>[if (user.canManage) _dashboard(user, greeting, scope)];
-    final dests = <_Dest>[
-      if (user.canManage) const _Dest(Glyph.dashboard, 'Главная'),
-    ];
+    final tabs = <Widget>[];
+    final dests = <_Dest>[];
 
     if (user.role == 'worker') {
       // Worker: personal queue first — it is their main workspace.
+      // The dashboard is shown as "Главная" with a logout button.
+      tabs.add(_dashboard(user, greeting, scope));
+      dests.add(const _Dest(Glyph.dashboard, 'Главная'));
       tabs.add(const ApplicationsScreen(mineOnly: true));
       dests.add(const _Dest(Glyph.kanban, 'Мои кейсы'));
       tabs.add(const VacanciesScreen());
       dests.add(const _Dest(Glyph.briefcase, 'Вакансии'));
     } else {
+      tabs.add(_dashboard(user, greeting, scope));
+      dests.add(const _Dest(Glyph.dashboard, 'Главная'));
       tabs.add(const VacanciesScreen());
       dests.add(const _Dest(Glyph.briefcase, 'Вакансии'));
       tabs.add(const CandidatesScreen());
@@ -271,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
             const SizedBox(height: 16),
 
-            // -------- navigation
+            // -------- navigation (indices match the role tab set above)
             Text('Разделы', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             _NavCard(
@@ -280,13 +294,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: user.canManage
                     ? 'Kanban-доска: перетаскивание карточек между этапами'
                     : 'Отклики, назначенные лично вам',
-                onTap: () => _openSection(user.canManage ? 3 : 0)),
+                onTap: () => _openSection(user.canManage ? 3 : 1)),
             _NavCard(
                 glyph: Glyph.briefcase,
                 title: 'Вакансии',
                 subtitle: 'Поиск, фильтры, пагинация'
                     '${user.canManage ? ', создание и правка' : ''}',
-                onTap: () => _openSection(user.canManage ? 1 : 1)),
+                onTap: () => _openSection(1)),
             if (user.canManage)
               _NavCard(
                   glyph: Glyph.people,

@@ -42,11 +42,23 @@ def list_candidates(
     search: str | None = Query(default=None, max_length=200),
     city: str | None = Query(default=None, max_length=80),
     specialization: str | None = Query(default=None, max_length=100),
+    ids: str | None = Query(
+        default=None,
+        max_length=2000,
+        description="Comma-separated candidate ids (batch fetch for cards)",
+    ),
 ) -> Page[CandidateRead]:
+    id_list: list[int] | None = None
+    if ids:
+        try:
+            id_list = [int(x) for x in ids.split(",") if x.strip()]
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="ids must be comma-separated integers") from exc
     return service.list_candidates(
         PageParams(page=page, page_size=page_size, search=search),
         city=city,
         specialization=specialization,
+        ids=id_list,
     )
 
 

@@ -22,13 +22,20 @@ class CandidateRepository(BaseRepository[Candidate, CandidateRead, CandidateCrea
         params: PageParams,
         city: str | None = None,
         specialization: str | None = None,
+        ids: list[int] | None = None,
     ) -> Page[CandidateRead]:
-        """Pagination + ILIKE search over name / specialization / e-mail."""
+        """Pagination + ILIKE search over name / specialization / e-mail.
+
+        ``ids`` restricts the query to an explicit id set (batch fetch used
+        by clients that render cards for applications).
+        """
         with Vis(self._factory) as session:
             stmt = select(Candidate)
             count_stmt = select(func.count()).select_from(Candidate)
 
             conditions = []
+            if ids is not None:
+                conditions.append(Candidate.id.in_(ids))
             if params.search:
                 pattern = f"%{params.search.lower()}%"
                 conditions.append(

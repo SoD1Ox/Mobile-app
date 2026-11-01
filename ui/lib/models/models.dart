@@ -72,10 +72,10 @@ class VacancyItem {
 
     if (salaryFrom == null && salaryTo == null) return 'Зарплата не указана';
     if (salaryFrom != null && salaryTo != null) {
-      return '${fmt(salaryFrom!)} – ${fmt(salaryTo!)} ₽';
+      return '${fmt(salaryFrom!)} – ${fmt(salaryTo!)} ₽/мес';
     }
-    if (salaryFrom != null) return 'от ${fmt(salaryFrom!)} ₽';
-    return 'до ${fmt(salaryTo!)} ₽';
+    if (salaryFrom != null) return 'от ${fmt(salaryFrom!)} ₽/мес';
+    return 'до ${fmt(salaryTo!)} ₽/мес';
   }
 }
 
@@ -145,6 +145,13 @@ class ApplicationItem {
   final int vacancyId;
   final int? managerId;
   final int? assignedWorkerId;
+  // Denormalized display fields (server resolves relations in one request).
+  final String? candidateName;
+  final String? vacancyTitle;
+  final String? companyName;
+  final double? salaryFrom;
+  final double? salaryTo;
+  final String? assignedWorkerName;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -155,8 +162,27 @@ class ApplicationItem {
         vacancyId = j['vacancy_id'],
         managerId = j['manager_id'],
         assignedWorkerId = j['assigned_worker_id'],
+        candidateName = j['candidate_name'] as String?,
+        vacancyTitle = j['vacancy_title'] as String?,
+        companyName = j['company_name'] as String?,
+        salaryFrom = (j['salary_from'] as num?)?.toDouble(),
+        salaryTo = (j['salary_to'] as num?)?.toDouble(),
+        assignedWorkerName = j['assigned_worker_name'] as String?,
         createdAt = DateTime.parse(j['created_at']),
         updatedAt = DateTime.parse(j['updated_at']);
+
+  /// Salary shown on the card — always "per month".
+  String get salaryLabel {
+    String fmt(double v) => v >= 1000
+        ? '${(v / 1000).toStringAsFixed(v % 1000 == 0 ? 0 : 1)} тыс'
+        : v.toStringAsFixed(0);
+    if (salaryFrom == null && salaryTo == null) return '';
+    if (salaryFrom != null && salaryTo != null) {
+      return '${fmt(salaryFrom!)}–${fmt(salaryTo!)} ₽/мес';
+    }
+    if (salaryFrom != null) return 'от ${fmt(salaryFrom!)} ₽/мес';
+    return 'до ${fmt(salaryTo!)} ₽/мес';
+  }
 
   static const statusLabels = {
     'new': 'Новый отклик',

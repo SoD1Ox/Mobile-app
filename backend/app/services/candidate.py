@@ -20,9 +20,10 @@ class CandidateService:
         self._comment_repo = comment_repo or CommentRepository()
 
     def list_candidates(
-        self, params: PageParams, city: str | None = None, specialization: str | None = None
+        self, params: PageParams, city: str | None = None, specialization: str | None = None,
+        ids: list[int] | None = None,
     ) -> Page[CandidateRead]:
-        return self._repo.search_paginated(params, city=city, specialization=specialization)
+        return self._repo.search_paginated(params, city=city, specialization=specialization, ids=ids)
 
     def get_candidate(self, candidate_id: int) -> CandidateRead:
         candidate = self._repo.get_by_id(candidate_id)

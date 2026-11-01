@@ -35,13 +35,18 @@ class VacancyRepository(BaseRepository[Vacancy, VacancyRead, VacancyCreate, Vaca
         city: str | None = None,
         remote: bool | None = None,
         salary_min: Decimal | None = None,
+        ids: list[int] | None = None,
     ) -> Page[VacancyRead]:
-        """The main large-data mechanism: pagination + filtering + search."""
+        """The main large-data mechanism: pagination + filtering + search.
+
+        ``ids`` restricts to an explicit id set (batch fetch by clients)."""
         with Vis(self._factory) as session:
             stmt = self._base_query()
             count_stmt = select(func.count()).select_from(Vacancy)
 
             conditions = []
+            if ids is not None:
+                conditions.append(Vacancy.id.in_(ids))
             if params.search:
                 pattern = f"%{params.search.lower()}%"
                 conditions.append(

@@ -45,25 +45,45 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
         if (widget.mineOnly) 'mine': true,
       });
       final page = DataPage.fromJson(raw, ApplicationItem.fromJson);
-      final candIds = page.items.map((e) => e.candidateId).toSet();
-      final vacIds = page.items.map((e) => e.vacancyId).toSet();
+      // The server now ships candidate/vacancy names inside each application
+      // (denormalized DTO) — no per-card requests. Fallback batch fetch by ids
+      // covers legacy rows without the embedded fields.
       final names = <int, String>{..._candidateNames};
       final titles = <int, String>{..._vacancyTitles};
-      for (final id in candIds.where((i) => !names.containsKey(i))) {
-        try {
-          final c = await api.get('/candidates/$id');
-          names[id] = (c as Map)['full_name'] as String? ?? '—';
-        } catch (_) {
-          names[id] = 'Кандидат удалён';
-        }
+      for (final a in page.items) {
+        if (a.candidateName != null) names[a.candidateId] = a.candidateName!;
+        if (a.vacancyTitle != null) titles[a.vacancyId] = a.vacancyTitle!;
       }
-      for (final id in vacIds.where((i) => !titles.containsKey(i))) {
+      final missingCand =
+          page.items.map((e) => e.candidateId).toSet().where((i) => !names.containsKey(i)).toList();
+      final missingVac =
+          page.items.map((e) => e.vacancyId).toSet().where((i) => !titles.containsKey(i)).toList();
+      if (missingCand.isNotEmpty) {
         try {
-          final v = await api.get('/vacancies/$id');
-          titles[id] = (v as Map)['title'] as String? ?? '—';
-        } catch (_) {
-          titles[id] = 'Вакансия удалена';
-        }
+          final res = await api.get('/candidates',
+              {'ids': missingCand.join(','), 'page_size': missingCand.length});
+          for (final e
+              in (res as Map)['items'] as List) {
+            final m = Map<String, dynamic>.from(e as Map);
+            names[m['id'] as int] = m['full_name'] as String? ?? '—';
+          }
+        } catch (_) {/* leave unknown */}
+      }
+      if (missingVac.isNotEmpty) {
+        try {
+          final res = await api.get('/vacancies',
+              {'ids': missingVac.join(','), 'page_size': missingVac.length});
+          for (final e in (res as Map)['items'] as List) {
+            final m = Map<String, dynamic>.from(e as Map);
+            titles[m['id'] as int] = m['title'] as String? ?? '—';
+          }
+        } catch (_) {}
+      }
+      for (final id in missingCand.where((i) => !names.containsKey(i))) {
+        names[id] = 'Кандидат удалён';
+      }
+      for (final id in missingVac.where((i) => !titles.containsKey(i))) {
+        titles[id] = 'Вакансия удалена';
       }
       if (!mounted) return;
       setState(() {

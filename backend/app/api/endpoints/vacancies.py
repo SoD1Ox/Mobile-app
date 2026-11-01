@@ -43,13 +43,22 @@ def list_vacancies(
     city: str | None = Query(default=None, max_length=80),
     remote: bool | None = Query(default=None),
     salary_min: Decimal | None = Query(default=None, ge=0),
+    ids: str | None = Query(default=None, max_length=2000,
+                            description="Comma-separated vacancy ids (batch fetch)"),
 ) -> Page[VacancyRead]:
+    id_list: list[int] | None = None
+    if ids:
+        try:
+            id_list = [int(x) for x in ids.split(",") if x.strip()]
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="ids must be comma-separated integers") from exc
     return service.list_vacancies(
         PageParams(page=page, page_size=page_size, search=search),
         company_id=company_id,
         city=city,
         remote=remote,
         salary_min=salary_min,
+        ids=id_list,
     )
 
 
