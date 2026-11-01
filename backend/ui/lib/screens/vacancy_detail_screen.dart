@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../models/models.dart';
+import '../theme/glass.dart';
 import '../theme/glass_stack.dart';
 import '../widgets/common.dart';
 import '../widgets/glass_icons.dart';
@@ -117,7 +118,7 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
                                 if (v.remote)
                                   const StatusChip(
                                       label: 'Удалённо',
-                                      color: Color(0xFF26C6DA)),
+                                      color: const Color(0xFF5BC8E8)),
                               ],
                             ),
                             const SizedBox(height: 10),
@@ -128,7 +129,7 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
                                 Text(v.salaryLabel,
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w700,
-                                        color: Color(0xFF8CE99A))),
+                                        color: const Color(0xFF3ED9B8))),
                               ],
                             ),
                             const SizedBox(height: 12),

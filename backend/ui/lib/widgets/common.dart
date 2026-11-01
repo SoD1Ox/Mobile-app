@@ -2,9 +2,12 @@
 /// in one visual style (glass Material 3, same paddings, same error handling).
 library;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui show ImageFilter;
 
 import '../app_state.dart';
+import '../theme/glass.dart' show kGlassRadius;
 import 'glass_icons.dart';
 
 /// Standard form text field with validation message shown inline.
@@ -67,7 +70,7 @@ class AppDropdown<T> extends StatelessWidget {
           value: value,
           isExpanded: true,
           decoration: InputDecoration(labelText: label),
-          dropdownColor: const Color(0xF216294E),
+          dropdownColor: const Color(0xF210302B),
           style: const TextStyle(color: Colors.white),
           menuMaxHeight: 360,
           items: items,
@@ -100,12 +103,12 @@ class StatusChip extends StatelessWidget {
 
 /// Hiring-pipeline stage colors (application statuses).
 Color statusColor(String s) => switch (s) {
-      'new' => Color(0xFF7986CB),
-      'review' => Color(0xFF42A5F5),
-      'interview' => Color(0xFFAB47BC),
-      'offer' => Color(0xFFFFA726),
-      'hired' => Color(0xFF66BB6A),
-      'rejected' => Color(0xFFEF5350),
+      'new' => const Color(0xFF9DB4AE),
+      'review' => const Color(0xFF5BC8E8),
+      'interview' => const Color(0xFFFFB35C),
+      'offer' => const Color(0xFFFF8A66),
+      'hired' => const Color(0xFF3ED9B8),
+      'rejected' => const Color(0xFFF16A6A),
       _ => Colors.grey,
     };
 
@@ -121,7 +124,7 @@ Future<bool> confirmDialog(BuildContext context, String title, String text,
         TextButton(
             onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
         FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF5350)),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF16A6A)),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(okLabel)),
       ],
@@ -175,7 +178,7 @@ class GlassListCard extends StatelessWidget {
       child: ClipRRect(
         borderRadius: kGlassRadius,
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: inner,
         ),
       ),

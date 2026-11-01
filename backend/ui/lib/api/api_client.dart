@@ -18,6 +18,9 @@ class ApiException implements Exception {
 
   ApiException(this.statusCode, this.message);
 
+  /// Client-side validation error (no HTTP status involved).
+  ApiException.client(String this.message) : statusCode = 0;
+
   @override
   String toString() => message;
 }

@@ -25,7 +25,6 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
   final Map<int, String> _candidateNames = {};
   final Map<int, String> _vacancyTitles = {};
   bool _loading = true;
-  bool _dragging = false;
 
   static const _columns = ApplicationItem.pipelineOrder;
 
@@ -158,16 +157,20 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
             padding: const EdgeInsets.only(bottom: 80),
             children: [
               for (final a in cards)
-                Draggable<int>(
-                  data: a.id,
-                  enabled: canManage && !_dragging,
-                  feedback: Material(
-                    color: Colors.transparent,
-                    child: SizedBox(width: width - 16, child: _card(a, preview: true)),
+                if (!canManage)
+                  _card(a)
+                else
+                  Draggable<int>(
+                    data: a.id,
+                    feedback: Material(
+                      color: Colors.transparent,
+                      child: SizedBox(
+                          width: width - 16, child: _card(a, preview: true)),
+                    ),
+                    childWhenDragging:
+                        Opacity(opacity: 0.35, child: _card(a)),
+                    child: _card(a),
                   ),
-                  childWhenDragging: Opacity(opacity: 0.35, child: _card(a)),
-                  child: _card(a),
-                ),
             ],
           ),
         ),
@@ -175,8 +178,6 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
     );
     if (!canManage) return column;
     return DragTarget<int>(
-      onDragStart: (_) => setState(() => _dragging = true),
-      onDragEnd: (_) => setState(() => _dragging = false),
       onAcceptWithDetails: (details) {
         final app = _items.firstWhere((a) => a.id == details.data);
         _move(app, statusKey);

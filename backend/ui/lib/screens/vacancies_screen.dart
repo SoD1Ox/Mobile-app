@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../models/models.dart';
-import '../theme/glass_stack.dart';
 import '../widgets/common.dart';
 import '../widgets/glass_icons.dart';
 import 'vacancy_detail_screen.dart';
@@ -243,7 +242,7 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                                 const Padding(
                                   padding: EdgeInsets.only(left: 8),
                                   child: StatusChip(
-                                      label: 'Удалённо', color: Color(0xFF26C6DA)),
+                                      label: 'Удалённо', color: const Color(0xFF5BC8E8)),
                                 ),
                             ],
                           ),
@@ -257,7 +256,7 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                               Text(v.salaryLabel,
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF8CE99A))),
+                                      color: const Color(0xFF3ED9B8))),
                               if (v.city != null) ...[
                                 Text(' · ',
                                     style: TextStyle(

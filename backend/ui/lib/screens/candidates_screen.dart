@@ -3,7 +3,6 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../api/api_client.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../theme/glass.dart';

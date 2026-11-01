@@ -111,7 +111,7 @@ class _UsersScreenState extends State<UsersScreen> {
                                 onPressed: () => _openForm(existing: u)),
                             GlassIconButton(Glyph.delete,
                                 tooltip: 'Удалить',
-                                color: const Color(0xFFFF7A7A),
+                                color: const Color(0xFFF16A6A),
                                 onPressed: () => _delete(u)),
                           ]),
                   ),

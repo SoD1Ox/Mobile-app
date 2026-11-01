@@ -21,7 +21,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 // ---------------------------------------------------------------- palette
-const Color kAccent = Color(0xFF5B8CFF);
+const Color kAccent = Color(0xFF3ED9B8); // mint
+const Color kCoral = Color(0xFFFF8A66); // warm coral
 const Color kGlassBorder = Color(0x33FFFFFF);
 const BorderRadius kGlassRadius = BorderRadius.all(Radius.circular(18));
 
@@ -177,17 +178,17 @@ class _AuroraBackground extends StatelessWidget {
 
   static const List<BoxShadow> _glow = [
     BoxShadow(
-        color: Color(0x3D5B8CFF),
+        color: Color(0x3D3ED9B8),
         blurRadius: 140,
         spreadRadius: 40,
         offset: Offset(-120, -80)),
     BoxShadow(
-        color: Color(0x2E7BD76F),
+        color: Color(0x2EFF8A66),
         blurRadius: 160,
         spreadRadius: 30,
         offset: Offset(160, 220)),
     BoxShadow(
-        color: Color(0x26C084FC),
+        color: Color(0x226FE3C4),
         blurRadius: 120,
         spreadRadius: 20,
         offset: Offset(0, -260)),
@@ -199,7 +200,7 @@ class _AuroraBackground extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF101A33), Color(0xFF16294E), Color(0xFF0B1224)],
+            colors: [Color(0xFF0C1F1D), Color(0xFF123330), Color(0xFF081413)],
             stops: [0.0, 0.55, 1.0],
           ),
         ),

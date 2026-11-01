@@ -349,13 +349,13 @@ class _GlassNavBar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       gradient: i == index
                           ? const LinearGradient(
-                              colors: [Color(0x595B8CFF), Color(0x265B8CFF)],
+                              colors: [Color(0x593ED9B8), Color(0x263ED9B8)],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight)
                           : null,
                       border: Border.all(
                           color: i == index
-                              ? const Color(0x665B8CFF)
+                              ? const Color(0x663ED9B8)
                               : Colors.transparent),
                     ),
                     child: Column(

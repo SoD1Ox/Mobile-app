@@ -15,10 +15,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 // ---------------------------------------------------------------- palette
-const Color _bgTop = Color(0xFF101A33);
-const Color _bgMid = Color(0xFF16294E);
-const Color _bgBottom = Color(0xFF0B1224);
-const Color _accent = Color(0xFF5B8CFF);
+// Mint-green + coral design system (dark glass base).
+// Background stops are defined in theme/glass_stack.dart (_AuroraBackground).
+const Color _accent = Color(0xFF3ED9B8); // mint
+const Color _accentCoral = Color(0xFFFF8A66); // warm coral companion
 const Color _glassFill = Color(0x1FFFFFFF); // white @ ~12%
 const Color _glassBorder = Color(0x33FFFFFF); // white @ 20%
 
@@ -27,12 +27,18 @@ const BorderRadius kGlassRadius = BorderRadius.all(Radius.circular(18));
 /// Public accent color used by chips / links across screens.
 const Color kAccentColor = _accent;
 
+/// Warm coral companion accent (CTA highlights, counters).
+const Color kCoralColor = _accentCoral;
+
+/// Dark glass surface used behind dialogs / dropdown menus.
+const Color kDialogSurface = Color(0xF210302B);
+
 /// App-wide dark Material-3 theme built around the glass look.
 ThemeData buildGlassTheme() {
   final scheme = ColorScheme.fromSeed(
     seedColor: _accent,
     brightness: Brightness.dark,
-  ).copyWith(surface: const Color(0xFF14213D));
+  ).copyWith(surface: const Color(0xFF0F2925));
 
   OutlineInputBorder fieldBorder({bool focused = false}) => OutlineInputBorder(
         borderRadius: kGlassRadius,
@@ -47,7 +53,7 @@ ThemeData buildGlassTheme() {
     colorScheme: scheme,
     scaffoldBackgroundColor: Colors.transparent,
     canvasColor: Colors.transparent,
-    dialogBackgroundColor: const Color(0xF2182A4D),
+    dialogBackgroundColor: const Color(0xF210302B),
     visualDensity: VisualDensity.adaptivePlatformDensity,
     // cardTheme / dialogTheme intentionally NOT passed to the constructor:
     // their parameter type was renamed CardTheme->CardThemeData and
@@ -68,7 +74,7 @@ ThemeData buildGlassTheme() {
       ),
     ),
     listTileTheme: const ListTileThemeData(
-      iconColor: Color(0xC7D3EA),
+      iconColor: Color(0xCCD9E6E1),
       textColor: Colors.white,
     ),
     dividerTheme: DividerThemeData(
@@ -87,17 +93,17 @@ ThemeData buildGlassTheme() {
       focusedBorder: fieldBorder(focused: true),
       errorBorder: OutlineInputBorder(
         borderRadius: kGlassRadius,
-        borderSide: const BorderSide(color: Color(0xFFFF7A7A)),
+        borderSide: const BorderSide(color: Color(0xFFF16A6A)),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: kGlassRadius,
-        borderSide: const BorderSide(color: Color(0xFFFF7A7A), width: 1.4),
+        borderSide: const BorderSide(color: Color(0xFFF16A6A), width: 1.4),
       ),
     ),
     dropdownMenuTheme: DropdownMenuThemeData(
       menuStyle: MenuStyle(
         backgroundColor:
-            WidgetStatePropertyAll(Color(0xF216294E).withOpacity(0.98)),
+            WidgetStatePropertyAll(Color(0xF2123330).withOpacity(0.98)),
         shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: kGlassRadius)),
         side: const WidgetStatePropertyAll(BorderSide(color: _glassBorder)),
@@ -139,7 +145,7 @@ ThemeData buildGlassTheme() {
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      backgroundColor: const Color(0xE6182A4D),
+      backgroundColor: const Color(0xE610302B),
       contentTextStyle: const TextStyle(color: Colors.white),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
@@ -179,35 +185,10 @@ ThemeData buildGlassTheme() {
     ),
   );
 
-  // Card/dialog themes are applied AFTER construction via copyWith.
-  // Rationale: the ThemeData constructor parameter types were renamed
-  // CardTheme -> CardThemeData and DialogTheme -> DialogThemeData in
-  // Flutter 3.32+, so passing them inline breaks compilation on one of the
-  // SDK generations.  The helpers below detect at runtime which spelling the
-  // current SDK expects (copyWith's parameter type is reflected via
-  // runtimeType) and construct the matching class, so this file compiles and
-  // runs correctly on BOTH old (<3.32) and new (>=3.32) Flutter SDKs without
-  // manual edits.  Return type is dynamic on purpose.
-  // `theme.cardTheme` is always null here (we never pass it to the ctor), so
-  // `.runtimeType` would give Null and mis-detect the SDK generation.
-  // Instead we probe a freshly built default ThemeData whose card/dialog
-  // themes Flutter itself populates with the class names of THIS SDK.
-  final probe = ThemeData();
+  // Card & dialog glass themes (CardThemeData spelling exists on SDK>=3.32;
+  // this project targets 3.24 where CardTheme/DialogTheme are the classes).
   return theme.copyWith(
-    cardTheme: _buildGlassCardTheme(probe.cardTheme.runtimeType),
-    dialogTheme: _buildGlassDialogTheme(probe.dialogTheme.runtimeType),
-  );
-}
-
-// Legacy (SDK < 3.32) expects CardTheme/DialogTheme; modern (>= 3.32)
-// expects CardThemeData/DialogThemeData.  We pick the right one at runtime.
-// NOTE: both branches must be *constructible* on the compiling SDK — on
-// 3.32+ `CardTheme`/`DialogTheme` are deprecated typedef aliases of the *Data
-// classes, so referencing them still type-checks (hence the ignores below).
-dynamic _buildGlassCardTheme(Type expected) {
-  final wantsData = expected.toString().contains('Data');
-  if (wantsData) {
-    return const CardThemeData(
+    cardTheme: const CardTheme(
       color: _glassFill,
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -215,25 +196,9 @@ dynamic _buildGlassCardTheme(Type expected) {
         borderRadius: kGlassRadius,
         side: BorderSide(color: _glassBorder),
       ),
-    );
-  }
-  // ignore: deprecated_member_use
-  return const CardTheme(
-    color: _glassFill,
-    elevation: 0,
-    margin: EdgeInsets.zero,
-    shape: RoundedRectangleBorder(
-      borderRadius: kGlassRadius,
-      side: BorderSide(color: _glassBorder),
     ),
-  );
-}
-
-dynamic _buildGlassDialogTheme(Type expected) {
-  final wantsData = expected.toString().contains('Data');
-  if (wantsData) {
-    return DialogThemeData(
-      backgroundColor: const Color(0xF2182A4D),
+    dialogTheme: DialogTheme(
+      backgroundColor: const Color(0xF210302B),
       surfaceTintColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(22)),
@@ -243,20 +208,6 @@ dynamic _buildGlassDialogTheme(Type expected) {
           color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700),
       contentTextStyle: TextStyle(
           color: Colors.white.withOpacity(0.85), fontSize: 14.5),
-    );
-  }
-  // ignore: deprecated_member_use
-  return DialogTheme(
-    backgroundColor: const Color(0xF2182A4D),
-    surfaceTintColor: Colors.transparent,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(22)),
-      side: BorderSide(color: _glassBorder),
     ),
-    titleTextStyle: const TextStyle(
-        color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700),
-    contentTextStyle: TextStyle(
-        color: Colors.white.withOpacity(0.85), fontSize: 14.5),
   );
 }
-

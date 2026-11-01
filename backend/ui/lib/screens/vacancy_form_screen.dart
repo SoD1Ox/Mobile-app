@@ -80,14 +80,14 @@ class _VacancyFormScreenState extends State<VacancyFormScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_companyId == null) {
-      showError(context, ApiException('Выберите компанию'));
+      showError(context, ApiException.client('Выберите компанию'));
       return;
     }
     double? num(String s) => s.trim().isEmpty ? null : double.tryParse(s.trim());
     final sf = num(_salaryFrom.text);
     final st = num(_salaryTo.text);
     if (sf != null && st != null && st < sf) {
-      showError(context, ApiException('Зарплата «до» меньше зарплаты «от»'));
+      showError(context, ApiException.client('Зарплата «до» меньше зарплаты «от»'));
       return;
     }
     final body = <String, dynamic>{
