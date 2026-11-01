@@ -1,1 +1,5 @@
 *.db
+
+# Логи и артефакты
+backend/server.log
+*.log

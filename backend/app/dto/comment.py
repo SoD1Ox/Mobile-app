@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class CommentCreate(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
-    candidate_id: int = Field(gt=0)
+    candidate_id: int | None = Field(default=None, gt=0)
 
 
 class CommentRead(BaseModel):

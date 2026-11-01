@@ -44,7 +44,7 @@ from app.security.security import hash_password  # noqa: E402
 random.seed(42)
 
 USERS = [
-    ("admin", "admin@example.com", "Администратор Системы", UserRole.ADMIN, "admin123"),
+    ("admin", "admin@example.com", "Анна Рекрутер", UserRole.ADMIN, "admin123"),
     ("manager", "manager@example.com", "Иван Менеджеров", UserRole.MANAGER, "manager123"),
     ("worker", "worker@example.com", "Пётр Рабочих", UserRole.WORKER, "worker123"),
 ]

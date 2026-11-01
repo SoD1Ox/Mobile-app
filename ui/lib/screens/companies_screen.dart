@@ -414,7 +414,7 @@ class _CompanyFormDialogState extends State<_CompanyFormDialog> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final body = <String, dynamic>{
-      'name': _name.text.trim(),
+      'full_name': _name.text.trim(),
       'email': _email.text.trim().isEmpty ? null : _email.text.trim(),
       'phone': _phone.text.trim().isEmpty ? null : _phone.text.trim(),
       'address': _address.text.trim().isEmpty ? null : _address.text.trim(),

@@ -57,4 +57,6 @@ class CandidateService:
 
     def add_comment(self, candidate_id: int, data: CommentCreate, author_id: int) -> CommentRead:
         self.get_candidate(candidate_id)  # 404 if missing
+        # The nested route supplies the candidate id; a mismatched body value is ignored.
+        data = data.model_copy(update={"candidate_id": candidate_id})
         return self._comment_repo.create_for_candidate(data, author_id)

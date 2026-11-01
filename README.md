@@ -1,172 +1,94 @@
-# Task Tracker — FastAPI + PostgreSQL + Alembic + Flutter
+# Кадровое агентство — FastAPI + PostgreSQL + Alembic + Flutter
 
-Полноценное приложение для управления задачами: REST API на FastAPI, база данных PostgreSQL
-с миграциями Alembic, слоистая архитектура (ORM → репозитории → DTO → сервисы → API) и
-кастомный интерфейс на Flutter в стиле «жидкое стекло» (Material 3, только кастомные
-векторные иконки и элементы — без стикеров, эмодзи и стандартных Material Icons).
+Полноценное приложение кадрового агентства (рекрутинг): REST API на FastAPI, база данных
+PostgreSQL с миграциями Alembic, слоистая архитектура (ORM → репозитории → DTO → сервисы → API)
+и интерфейс на Flutter в стиле «жидкое стекло» (mint-green + coral, только кастомные векторные
+иконки — без стикеров, эмодзи и стандартных Material Icons).
 
-Подробный пошаговый гайд по запуску с учётом вашей конфигурации (Windows, PowerShell,
-порт PostgreSQL 1616): docs/GUIDE.md
+Подробный пошаговый гайд по запуску (Windows, PowerShell, порт PostgreSQL 1616): docs/GUIDE.md
 
-## Архитектура
+## Возможности
+
+* Авторизация и регистрация (bcrypt-хеш паролей, JWT access/refresh, роли admin / manager / worker)
+* Главный экран: приветствие по времени суток, данные пользователя, живая статистика найма
+* Вакансии: список с поиском и фильтрами, карточка вакансии, создание / редактирование / удаление
+* Кандидаты: профиль, контакты, история откликов, заметки рекрутеров (CRUD)
+* Компании: карточки работодателей и контактные лица (CRUD)
+* Kanban-воронка найма: перетаскивание откликов между этапами (new → review → interview → offer → hired / rejected)
+* Пользователи системы (для администратора)
+* Пагинация limit/offset + бесконечная прокрутка (работа с большими данными)
+* Сообщения об ошибках на каждом экране, навигация со кнопкой «назад»
+
+## Структура проекта
 
 ```
 backend/
 ├── alembic/            # версионированные миграции схемы БД (upgrade/downgrade)
 ├── app/
 │   ├── api/
-│   │   ├── dependencies/   # JWT-зависимости, проверка ролей (RBAC), DI провайдеров
-│   │   └── endpoints/      # тонкие эндпоинты: только валидация DTO + вызов сервиса
-│   ├── db/
-│   │   ├── session.py      # фабрика сессий: контекстный менеджер Vis (открыл → сделал → закрыл)
-│   │   └── models/         # SQLAlchemy-модели (7 таблиц)
-│   ├── dto/                # Pydantic-схемы — защитный слой между ORM и интерфейсом
-│   ├── repositories/       # репозиторий = класс со всеми запросами к БД для одной сущности
-│   ├── services/           # бизнес-логика (отдельно от эндпоинтов)
-│   ├── security/           # bcrypt-хеширование паролей, генерация/проверка JWT, refresh
+│   │   ├── dependencies/   # JWT-зависимости, проверка ролей (RBAC)
+│   │   └── endpoints/      # тонкие эндпоинты: валидация DTO + вызов сервиса
+│   ├── db/                 # фабрика сессий sessionmaker + SQLAlchemy-модели
+│   ├── dto/                # Pydantic-схемы запросов/ответов (отдельно от ORM)
+│   ├── repositories/       # все SQL-запросы по одной сущности на репозиторий
+│   ├── services/           # бизнес-логика (не в эндпоинтах!)
+│   ├── security/           # bcrypt, генерация/проверка JWT, refresh-токены
 │   └── config/             # настройки из .env
-├── scripts/seed.py         # наполнение БД тестовыми данными (~1000 задач)
-└── ui/                     # Flutter-приложение
+├── scripts/seed.py         # наполнение БД тестовыми данными (~1000+ записей)
+└── requirements.txt
+
+ui/                     # Flutter-приложение (staffing_agency_ui)
+├── lib/
+│   ├── api/                # HTTP-клиент с JWT и авто-refresh
+│   ├── models/             # DTO-модели клиента (зеркало Pydantic-схем)
+│   ├── screens/            # auth, home, vacancies, candidates, companies,
+│   │                       # applications (Kanban), users + формы и детали
+│   ├── theme/              # glass.dart / glass_stack.dart — дизайн-система стекла
+│   └── widgets/            # стеклянные виджеты + кастомные векторные иконки
+docs/GUIDE.md           # пошаговый гайд запуска и типовые проблемы
 ```
 
-### Сущности БД (7 таблиц, 5+ связей)
+## Быстрый запуск
 
-| Таблица    | Роль                                          | Связи |
-|------------|-----------------------------------------------|-------|
-| users      | пользователи системы (роли) — доп. сущность   | 1:N → projects, tasks, comments |
-| clients    | основная сущность                             | 1:N → contacts, projects |
-| contacts   | контактные лица клиентов                      | N:1 → clients |
-| projects   | основная сущность                             | N:1 → clients, users; 1:N → tasks |
-| tasks      | основная сущность                             | N:1 → projects, users; M:N → tags |
-| tags       | теги                                          | M:N → tasks (task_tags) |
-| comments   | комментарии к задачам                         | N:1 → tasks, users |
-
-## Безопасность
-
-- Пароли хранятся **только как bcrypt-хеш**.
-- Все эндпоинты, кроме `/auth/login` и `/auth/register`, требуют JWT-токен (Bearer).
-- RBAC: три роли — `admin` (полный доступ, управление пользователями), `manager`
-  (CRUD клиентов/проектов/задач), `worker` (свои задачи, комментарии, смена статуса).
-- Access-токен короткий (15 мин), refresh-токен продлевает сессию автоматически в UI.
-
-## Механизм работы с большим количеством данных
-
-Список задач отдаётся **пагинацией** (`?page=&limit=`) с **поиском/фильтрацией**
-(`?search=&status=&priority=&project_id=&assignee_id=`). В UI — бесконечная прокрутка
-(бесшовная подгрузка следующих страниц).
-
-## Быстрый старт (кратко)
-
-Полная версия с диагностикой типичных ошибок — в docs/GUIDE.md. Здесь — минимум команд.
-
-### 1. PostgreSQL + база данных
-
-Установите PostgreSQL (16/18 с официального сайта) и запустите службу:
-
-```powershell
-Get-Service -Name "postgresql*" | Start-Service
-# узнайте фактический порт сервера (установка может использовать нестандартный, например 1616):
-Get-NetTCPConnection -State Listen | Where-Object { $_.OwningProcess -in (Get-Process postgres -ErrorAction SilentlyContinue).Id } | Select-Object LocalAddress, LocalPort
-```
-
-Создайте базу и пользователя `app_user` (пароли — как в `backend/.env`). Ниже `<PORT>` —
-порт из вывода команды выше (5432 или, как в вашей конфигурации, 1616):
-
-```powershell
-$env:PGCLIENTENCODING='UTF8'   # чтобы кириллица в консоли не ломалась
-psql -U postgres -h localhost -p <PORT> -c "CREATE DATABASE mobile_app;"
-psql -U postgres -h localhost -p <PORT> -d mobile_app -c "CREATE ROLE app_user LOGIN PASSWORD 'app_pass'; GRANT ALL ON DATABASE mobile_app TO app_user; GRANT ALL ON SCHEMA public TO app_user; ALTER SCHEMA public OWNER TO app_user;"
-```
-
-Данные можно залить одним из способов:
-- **Готовый дамп** (все таблицы + ~1000 задач): `pg_restore -U postgres -h localhost -p <PORT> -d mobile_app --no-owner db_export\mobile_app.dump`
-- **или миграции + seed** (шаги 2–3 ниже).
-
-Если порт не 5432 — пропишите его только в `backend/.env` (`DB_PORT`): и приложение,
-и Alembic читают URL из `.env` (в `alembic.ini` менять ничего не нужно).
-
-### 2. Бэкенд (FastAPI)
+### Бэкенд
 
 ```powershell
 cd backend
-python -m venv venv
-.\venv\Scripts\Activate.ps1        # если ругается политика: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+# 1. .env должен существовать (скопируйте из .env.example, DATABASE_URL на порт 1616)
+# 2. зависимости
 pip install -r requirements.txt
-alembic upgrade head               # применить миграции (порт берётся из .env)
-python -m scripts.seed             # наполнить БД данными (если не восстанавливали дамп)
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# 3. схема БД
+alembic upgrade head
+# 4. тестовые данные
+python -m scripts.seed --force
+# 5. сервер
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Проверка: откройте http://localhost:8000/health → должно быть `{"status":"ok"}`.
-Swagger для ручного тестирования API: http://localhost:8000/docs
+Документация API: http://127.0.0.1:8000/docs
 
-Тестовые аккаунты после seed: `admin/admin123`, `manager/manager123`, `worker/worker123`.
-
-### 3. UI (Flutter) — запуск на ПК / эмуляторе
-
-Установите Flutter SDK (`https://docs.flutter.dev/get-started/install/windows`) и добавьте
-`C:\flutter\bin` в PATH, затем перезапустите терминал. Проверка: `flutter --version`.
+### Интерфейс (Flutter)
 
 ```powershell
-cd backend\ui
-flutter pub get
-flutter run -d edge                # или chrome / windows / emulator (список: flutter devices)
+cd ui
+flutter run -d edge
 ```
 
-Интерфейс полностью кастомный: тёмная тема «жидкое стекло», все иконки рисуются через
-CustomPaint (`lib/widgets/glass_icons.dart`), никаких стикеров и эмодзи.
+Тестовые аккаунты после seed: `admin@example.com` / `manager@example.com` / `worker@example.com`,
+пароли: `admin123` / `manager123` / `worker123`.
 
-Адрес бэкенда задаётся в `lib/api/api_client.dart`; по умолчанию:
-- Web / десктоп: `http://127.0.0.1:8000/api/v1`
-- Android-эмулятор: `http://10.0.2.2:8000/api/v1` (через этот алиас эмулятор видит хост-машину)
-- Физический телефон: пересоберите с адресом вашего ПК в LAN:
-  `flutter build apk --release --dart-define=API_BASE_URL=http://192.168.1.XX:8000/api/v1`
-  (IP смотрите командой `ipconfig`, Wi-Fi сети телефона и ПК должны совпадать,
-  порт 8000 открыть в брандмауэре: `New-NetFirewallRule -DisplayName "API 8000" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8000`)
-
-## Сборка APK (Android)
-
-Нужен Android Studio (SDK + платформы) либо установленный Android SDK. Затем:
+### Сборка APK
 
 ```powershell
-cd backend\ui
-flutter doctor            # убедитесь, что Android toolchain — зелёный
-flutter build apk --release
+cd ui
+flutter build apk --release --dart-define=API_BASE_URL=http://<IP-вашего-ПК>:8000/api/v1
 ```
 
-Готовый файл: `backend\ui\build\app\outputs\flutter-apk\app-release.apk`.
+Gradle-обёртка уже настроена на 8.14.3 (совместима с текущим Flutter).
 
-### Как пользоваться APK на телефоне
+## Безопасность
 
-1. Перекиньте `app-release.apk` на телефон (USB, Telegram «Saved Messages», облако).
-2. На телефоне разрешите установку из неизвестных источников
-   (Настройки → Приложения → Специальный доступ → Установка неизвестных приложений).
-3. Установите APK, запустите Task Tracker.
-4. **Обязательно:** бэкенд должен работать на вашем ПК в той же Wi-Fi сети:
-   `uvicorn app.main:app --host 0.0.0.0 --port 8000` (из папки `backend`).
-   Если APK собран без `--dart-define=API_BASE_URL=...` по LAN-адресу ПК — приложение
-   будет обращаться к 10.0.2.2 (только эмулятор). Пересоберите с верным IP при необходимости.
-5. Войдите `admin/admin123` (или зарегистрируйте нового пользователя).
-
-## Основные экраны UI
-
-- **Авторизация / регистрация** — вход, создание аккаунта, ошибки в диалогах.
-- **Главный экран** — приветствие, данные пользователя, навигация на все разделы.
-- **Задачи** — список с поиском, фильтрами (статус/приоритет), бесконечной прокруткой.
-- **Карточка задачи** — детали, комментарии, смена статуса, редактирование, удаление.
-- **Проекты / Клиенты (+контакты)** — просмотр, создание, изменение, удаление.
-- **Пользователи** — только для admin.
-
-Все экраны связаны навигацией (кнопка «Назад»), единый стиль, любая ошибка показывается
-пользователю сообщением.
-
-## Типичные проблемы (кратко)
-
-| Симптом | Причина и решение |
-|---------|-------------------|
-| `Connection refused ... port 5432` | Служба PostgreSQL остановлена или порт нестандартный. `Get-Service postgresql*`, узнать порт, прописать в `.env` и `alembic.ini`. |
-| `нет доступа к таблице alembic_version` | Таблица принадлежит `postgres`. `ALTER TABLE alembic_version OWNER TO app_user;` |
-| `running scripts is disabled` | PowerShell: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`. |
-| Кракозябры в консоли | `$env:PGCLIENTENCODING='UTF8'`. |
-| `Failed to fetch` в UI | Бэкенд не запущен, браузер блокирует localhost (анитрекер/прокси), или IPv6: используйте `127.0.0.1`. |
-| APK не грузит данные на телефоне | Нет INTERNET-разрешения/cleartext (уже настроено), бэкенд не в той Wi-Fi сети, не открыт порт 8000 в брандмауэре, неверный `API_BASE_URL`. |
+* Пароли хранятся только в виде bcrypt-хеши
+* Все эндпоинты, кроме /auth/*, требуют Bearer-токен
+* RBAC: admin — всё; manager — вакансии/кандидаты/воронка/компании; worker — просмотр + заметки
+* JWT access (короткий) + refresh (длинный), refresh ротируется
