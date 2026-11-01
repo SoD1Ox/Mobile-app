@@ -7,6 +7,8 @@
 ///   worker  — Главная · Мои кейсы (назначенные отклики) · Вакансии.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
@@ -41,7 +43,14 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _newAppCount;
   int? _hiredCount;
   int? _myCaseCount; // assigned to the current user (worker/manager view)
-  bool _statsLoading = false;
+
+  /// Each counter loads independently: one slow/failed request can never
+  /// freeze the whole dashboard ("infinite loading" fix).
+  bool _loadingVacancies = true;
+  bool _loadingCandidates = true;
+  bool _loadingNewApps = true;
+  bool _loadingHired = true;
+  bool _loadingMine = true;
 
   /// Currently selected bottom-navigation tab.
   int _tab = 0;
@@ -52,44 +61,52 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadStats();
   }
 
-  Future<void> _loadStats() async {
-    setState(() => _statsLoading = true);
-    final scope = AppScope.of(context);
-    final api = scope.api;
-    final user = scope.user!;
+  /// Runs one stats query and patches only its own tile + loading flag.
+  Future<void> _stat(String path, Map<String, dynamic> params,
+      void Function(int?) apply, void Function(bool) setLoading) async {
     try {
-      // Only the queries relevant to the role — fast dashboard, no waiting
-      // for data the user cannot access anyway.
-      final results = await Future.wait([
-        api.get('/vacancies', {'page_size': 1}),
-        if (user.canManage)
-          api.get('/candidates', {'page_size': 1})
-        else
-          Future.value(null),
-        if (user.canManage)
-          api.get('/applications', {'page_size': 1, 'status': 'new'})
-        else
-          Future.value(null),
-        if (user.canManage)
-          api.get('/applications', {'page_size': 1, 'status': 'hired'})
-        else
-          Future.value(null),
-        // «mine» is scoped by the server to the current user's assignments.
-        api.get('/applications', {'page_size': 1, 'mine': true}),
-      ]);
+      final raw = await AppScope.of(context).api.get(path, params);
+      final total = (raw as Map?)?['total'];
       if (!mounted) return;
       setState(() {
-        _vacancyCount = (results[0] as Map?)?['total'] as int?;
-        _candidateCount = (results[1] as Map?)?['total'] as int?;
-        _newAppCount = (results[2] as Map?)?['total'] as int?;
-        _hiredCount = (results[3] as Map?)?['total'] as int?;
-        _myCaseCount = (results[4] as Map?)?['total'] as int?;
-        _statsLoading = false;
+        apply(total is int ? total : int.tryParse('${total ?? ''}'));
+        setLoading(false);
       });
-    } catch (e) {
+    } catch (_) {
+      // A failed query shows "—" instead of an endless spinner.
       if (!mounted) return;
-      setState(() => _statsLoading = false);
-      showError(context, e);
+      setState(() {
+        apply(null);
+        setLoading(false);
+      });
+    }
+  }
+
+  Future<void> _loadStats() async {
+    final user = AppScope.of(context).user;
+    if (user == null) return;
+    setState(() {
+      _loadingVacancies = true;
+      _loadingCandidates = user.canManage;
+      _loadingNewApps = user.canManage;
+      _loadingHired = true;
+      _loadingMine = true;
+      if (!user.canManage) {
+        _candidateCount = null;
+        _newAppCount = null;
+      }
+    });
+    unawaited(_stat('/vacancies', {'page_size': 1}, (v) => _vacancyCount = v,
+        (b) => _loadingVacancies = b));
+    unawaited(_stat('/applications', {'page_size': 1, 'mine': true},
+        (v) => _myCaseCount = v, (b) => _loadingMine = b));
+    unawaited(_stat('/applications', {'page_size': 1, 'status': 'hired'},
+        (v) => _hiredCount = v, (b) => _loadingHired = b));
+    if (user.canManage) {
+      unawaited(_stat('/candidates', {'page_size': 1},
+          (v) => _candidateCount = v, (b) => _loadingCandidates = b));
+      unawaited(_stat('/applications', {'page_size': 1, 'status': 'new'},
+          (v) => _newAppCount = v, (b) => _loadingNewApps = b));
     }
   }
 
@@ -226,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         glyph: Glyph.briefcase,
                         label: 'Вакансии',
                         value: _vacancyCount,
-                        loading: _statsLoading)),
+                        loading: _loadingVacancies)),
                 const SizedBox(width: 8),
                 if (user.canManage)
                   Expanded(
@@ -234,14 +251,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           glyph: Glyph.people,
                           label: 'Кандидаты',
                           value: _candidateCount,
-                          loading: _statsLoading))
+                          loading: _loadingCandidates))
                 else
                   Expanded(
                       child: _StatTile(
                           glyph: Glyph.kanban,
                           label: 'Мои кейсы',
                           value: _myCaseCount,
-                          loading: _statsLoading)),
+                          loading: _loadingMine)),
               ],
             ),
             if (user.canManage) ...[
@@ -253,14 +270,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           glyph: Glyph.send,
                           label: 'Новых откликов',
                           value: _newAppCount,
-                          loading: _statsLoading)),
+                          loading: _loadingNewApps)),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _StatTile(
                           glyph: Glyph.chart,
                           label: 'Трудоустроено',
                           value: _hiredCount,
-                          loading: _statsLoading)),
+                          loading: _loadingHired)),
                 ],
               ),
             ] else ...[
@@ -272,7 +289,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           glyph: Glyph.chart,
                           label: 'Трудоустроено',
                           value: _hiredCount,
-                          loading: _statsLoading)),
+                          loading: _loadingHired)),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _StatTile(

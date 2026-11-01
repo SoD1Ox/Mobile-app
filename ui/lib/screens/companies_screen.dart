@@ -206,7 +206,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
         _contacts = (results[1] as List)
             .map((e) => ContactItem.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList();
-        _vacancyCount = (results[2] as Map)['total'] as int? ?? 0;
+        _vacancyCount = ((results[2] as Map)['total'] as num?)?.toInt() ?? 0;
         _loading = false;
       });
     } catch (e) {
@@ -254,7 +254,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
           if (c != null && canManage) ...[
             GlassIconButton(Glyph.edit,
                 onPressed: () => _openEdit()),
-            if (user!.isAdmin) GlassIconButton(Glyph.delete, onPressed: _deleteCompany),
+            if ((user?.isAdmin ?? false)) GlassIconButton(Glyph.delete, onPressed: _deleteCompany),
           ],
         ],
       ),
@@ -345,7 +345,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
                                             size: 16,
                                             onPressed: () =>
                                                 _openContactForm(existing: ct)),
-                                      if (user!.isAdmin)
+                                      if ((user?.isAdmin ?? false))
                                         GlassIconButton(Glyph.delete,
                                             size: 16, onPressed: () => _deleteContact(ct)),
                                     ],

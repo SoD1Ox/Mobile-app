@@ -46,18 +46,18 @@ class VacancyItem {
 
   VacancyItem.fromJson(Map<String, dynamic> j)
       : id = j['id'],
-        title = j['title'],
+        title = (j['title'] ?? 'Без названия').toString(),
         description = j['description'],
         salaryFrom = _toDouble(j['salary_from']),
         salaryTo = _toDouble(j['salary_to']),
         city = j['city'],
         remote = j['remote'] ?? false,
-        companyId = j['company_id'],
+        companyId = (j['company_id'] as num?)?.toInt() ?? 0,
         skills = ((j['skills'] as List?) ?? [])
             .map((e) => SkillItem.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList(),
-        createdAt = DateTime.parse(j['created_at']),
-        updatedAt = DateTime.parse(j['updated_at']);
+        createdAt = _toDate(j['created_at']),
+        updatedAt = _toDate(j['updated_at']);
 
   String get salaryLabel {
     String fmt(double v) {
@@ -101,8 +101,8 @@ class CandidateItem {
         specialization = j['specialization'],
         experienceYears = j['experience_years'] ?? 0,
         resumeUrl = j['resume_url'],
-        createdAt = DateTime.parse(j['created_at']),
-        updatedAt = DateTime.parse(j['updated_at']);
+        createdAt = _toDate(j['created_at']),
+        updatedAt = _toDate(j['updated_at']);
 
   String get expLabel {
     final n = experienceYears;
@@ -129,7 +129,7 @@ class CompanyItem {
 
   CompanyItem.fromJson(Map<String, dynamic> j)
       : id = j['id'],
-        name = j['name'],
+        name = (j['name'] ?? 'Компания').toString(),
         email = j['email'],
         phone = j['phone'],
         address = j['address'],
@@ -176,8 +176,8 @@ class ApplicationItem {
             (j['status_history'] as List?)?.map((e) => e.toString()).toList() ??
                 const [],
         completionScore = (j['completion_score'] as num?)?.toDouble(),
-        createdAt = DateTime.parse(j['created_at']),
-        updatedAt = DateTime.parse(j['updated_at']);
+        createdAt = _toDate(j['created_at']),
+        updatedAt = _toDate(j['updated_at']);
 
   /// Human-readable pipeline timeline for the detail screen.
   static const _stageShort = {
@@ -269,7 +269,7 @@ class CommentItem {
         candidateId = j['candidate_id'],
         authorId = j['author_id'],
         authorName = j['author_name'],
-        createdAt = DateTime.parse(j['created_at']);
+        createdAt = _toDate(j['created_at']);
 }
 
 /// Contact person of a partner company.
@@ -313,3 +313,9 @@ class DataPage<T> {
 
 double? _toDouble(dynamic v) =>
     v == null ? null : double.tryParse('$v');
+
+/// Tolerant date parser: missing/malformed values never crash the UI.
+DateTime _toDate(Object? v) {
+  if (v is String) return DateTime.tryParse(v) ?? DateTime.now();
+  return DateTime.now();
+}
