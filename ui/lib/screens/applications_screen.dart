@@ -128,7 +128,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                         for (final st in _columns)
                           SizedBox(
                             width: colWidth + 8,
-                            child: _buildColumn(st, colWidth, canManage),
+                            child: _buildColumn(st, colWidth, canDrag),
                           ),
                       ],
                     ),
