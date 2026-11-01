@@ -8,7 +8,11 @@ import 'package:flutter/material.dart';
 
 enum Glyph {
   add,
+  briefcase, // vacancy / position
+  kanban, // hiring pipeline board
+  money, // salary (ruble banknote)
   back,
+  chevronDown,
   chevronLeft,
   chevronRight,
   close,
@@ -20,10 +24,14 @@ enum Glyph {
   home,
   lock,
   logout,
+  mail,
+  phone,
+  pin, // map location
   people,
   person,
   plusCircle,
   refresh,
+  resume, // candidate CV page
   save,
   search,
   send,
@@ -61,6 +69,7 @@ class _GlyphPainter extends CustomPainter {
     final s = size.width / 24; // design grid is 24x24
     canvas.scale(s);
 
+    const pi = 3.141592653589793;
     final stroke = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -361,6 +370,114 @@ class _GlyphPainter extends CustomPainter {
         canvas.drawCircle(const Offset(4.6, 6), 1.3, fill);
         canvas.drawCircle(const Offset(4.6, 12), 1.3, fill);
         canvas.drawCircle(const Offset(4.6, 18), 1.3, fill);
+      case Glyph.briefcase:
+        _path(canvas, stroke, (p) {
+          p.addRRect(RRect.fromRectAndRadius(
+              const Rect.fromLTWH(3.5, 7.5, 17, 12.5), const Radius.circular(2)));
+        });
+        _path(canvas, stroke, (p) {
+          p.moveTo(9, 7.5);
+          p.lineTo(9, 5.2);
+          p.quadraticBezierTo(9, 3.5, 10.7, 3.5);
+          p.lineTo(13.3, 3.5);
+          p.quadraticBezierTo(15, 3.5, 15, 5.2);
+          p.lineTo(15, 7.5);
+        });
+        _line(canvas, stroke, const Offset(3.5, 12.5), const Offset(20.5, 12.5));
+        _path(canvas, stroke, (p) {
+          p.moveTo(10.8, 12.5);
+          p.lineTo(10.8, 14.6);
+          p.lineTo(13.2, 14.6);
+          p.lineTo(13.2, 12.5);
+        });
+      case Glyph.money:
+        _path(canvas, stroke, (p) {
+          p.addRRect(RRect.fromRectAndRadius(
+              const Rect.fromLTWH(2.5, 6, 19, 12), const Radius.circular(2)));
+        });
+        canvas.drawCircle(const Offset(12, 12), 3.1, stroke);
+        // ₽ sign inside the circle: П-shape with a bottom bar + vertical leg.
+        _path(canvas, stroke, (p) {
+          p.moveTo(10.7, 14.2);
+          p.lineTo(10.7, 9.8);
+          p.lineTo(13.3, 9.8);
+          p.quadraticBezierTo(13.6, 12, 12.2, 12);
+          p.lineTo(10.7, 12);
+        });
+        _line(canvas, stroke, const Offset(9.6, 14.2), const Offset(13.2, 14.2));
+      case Glyph.kanban:
+        _path(canvas, stroke, (p) {
+          p.addRRect(RRect.fromRectAndRadius(
+              const Rect.fromLTWH(3.5, 3.5, 17, 17), const Radius.circular(2)));
+        });
+        _line(canvas, stroke, const Offset(9.2, 3.5), const Offset(9.2, 20.5));
+        _line(canvas, stroke, const Offset(14.8, 3.5), const Offset(14.8, 20.5));
+        _line(canvas, stroke, const Offset(5.4, 8), const Offset(7.3, 8));
+        _line(canvas, stroke, const Offset(11, 8), const Offset(13, 8));
+        _line(canvas, stroke, const Offset(11, 12.5), const Offset(13, 12.5));
+        _line(canvas, stroke, const Offset(16.6, 8), const Offset(18.6, 8));
+      case Glyph.resume:
+        _path(canvas, stroke, (p) {
+          p.moveTo(6, 3.5);
+          p.lineTo(14.5, 3.5);
+          p.lineTo(18.5, 7.5);
+          p.lineTo(18.5, 20.5);
+          p.lineTo(6, 20.5);
+          p.close();
+        });
+        _path(canvas, stroke, (p) {
+          p.moveTo(14.5, 3.5);
+          p.lineTo(14.5, 7.5);
+          p.lineTo(18.5, 7.5);
+        });
+        canvas.drawCircle(const Offset(10.4, 11.6), 1.7, stroke);
+        _path(canvas, stroke, (p) {
+          p.moveTo(7.6, 17.6);
+          p.quadraticBezierTo(10.4, 14.6, 13.2, 17.6);
+        });
+        _line(canvas, stroke, const Offset(15.4, 11.6), const Offset(17, 11.6));
+        _line(canvas, stroke, const Offset(15.4, 15), const Offset(17, 15));
+      case Glyph.mail:
+        _path(canvas, stroke, (p) {
+          p.addRRect(RRect.fromRectAndRadius(
+              const Rect.fromLTWH(3, 5.5, 18, 13), const Radius.circular(2)));
+        });
+        _path(canvas, stroke, (p) {
+          p.moveTo(4.2, 7);
+          p.lineTo(12, 13.2);
+          p.lineTo(19.8, 7);
+        });
+      case Glyph.phone:
+        _path(canvas, stroke, (p) {
+          p.moveTo(5.2, 3.8);
+          p.lineTo(8.6, 3.8);
+          p.lineTo(10, 8.4);
+          p.lineTo(7.9, 10.1);
+          p.quadraticBezierTo(10.6, 15.4, 15.4, 17.6);
+          p.lineTo(17, 15.4);
+          p.lineTo(21.4, 16.6);
+          p.lineTo(21.4, 19.8);
+          p.quadraticBezierTo(21.4, 21.2, 19.6, 21);
+          p.quadraticBezierTo(8.4, 19.2, 4.2, 8.2);
+          p.quadraticBezierTo(3.6, 5.2, 5.2, 3.8);
+          p.close();
+        });
+      case Glyph.pin:
+        _path(canvas, stroke, (p) {
+          p.moveTo(12, 21);
+          p.quadraticBezierTo(5.5, 13.5, 5.5, 9.5);
+          p.arcTo(const Rect.fromLTWH(5.5, 3.5, 13, 12), pi * 0.98, pi * 1.04,
+              false);
+          p.quadraticBezierTo(18.5, 13.5, 12, 21);
+          p.close();
+        });
+        canvas.drawCircle(const Offset(12, 9.3), 2.1, stroke);
+      case Glyph.chevronDown:
+        _path(canvas, stroke, (p) {
+          p.moveTo(7, 10);
+          p.lineTo(12, 15);
+          p.lineTo(17, 10);
+        });
     }
   }
 
