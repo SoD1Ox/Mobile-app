@@ -51,7 +51,8 @@ class UserService:
         return self._token_pair(user)
 
     def login(self, username: str, password: str) -> TokenPair:
-        user = self._repo.get_by_username(username)
+        # Accept either a username or an e-mail as the identifier.
+        user = self._repo.get_by_username(username) or self._repo.get_by_email(username)
         if user is None:
             # Same message as bad password — do not leak which half failed.
             raise AuthenticationError("Invalid username or password")
