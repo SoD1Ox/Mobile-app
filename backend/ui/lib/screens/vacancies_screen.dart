@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../models/models.dart';
-import '../theme/glass.dart';
+import '../theme/glass_stack.dart';
 import '../widgets/common.dart';
 import '../widgets/glass_icons.dart';
 import 'vacancy_detail_screen.dart';

@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import 'glass_icons.dart';
-import '../theme/glass.dart';
 
 /// Standard form text field with validation message shown inline.
 class AppTextField extends StatelessWidget {
@@ -155,9 +154,12 @@ class LoadingView extends StatelessWidget {
       const Center(child: CircularProgressIndicator());
 }
 
-/// Frosted-glass list card: translucent gradient fill + hairline border.
-/// Deliberately NO BackdropFilter inside scrolling lists — blur would be
-/// re-rasterized per frame and kill scroll FPS; this paints one cheap layer.
+/// Frosted-glass list card.  On native platforms it is REAL glass: one
+/// BackdropFilter gaussian blur behind a translucent gradient + hairline
+/// border.  On web (CanvasKit) live blur inside long scrolling lists costs a
+/// full-surface re-rasterization per frame, so there we keep the identical
+/// cheap gradient-frost paint instead — visually indistinguishable over the
+/// static aurora backdrop.
 class GlassListCard extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -165,39 +167,53 @@ class GlassListCard extends StatelessWidget {
   const GlassListCard({super.key, required this.child, this.onTap});
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: kGlassRadius,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withOpacity(0.13),
-                Colors.white.withOpacity(0.05),
-              ],
-            ),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.18),
-                blurRadius: 14,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: kGlassRadius,
-              child: child,
-            ),
-          ),
+  Widget build(BuildContext context) {
+    final inner = _glassDecorated(child: child, onTap: onTap);
+    if (kIsWeb) return inner;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      child: ClipRRect(
+        borderRadius: kGlassRadius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: inner,
         ),
-      );
+      ),
+    );
+  }
 }
+
+/// Shared frosted decoration used by [GlassListCard] (and web fallback).
+Widget _glassDecorated({required Widget child, VoidCallback? onTap}) =>
+    DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: kGlassRadius,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.13),
+            Colors.white.withOpacity(0.05),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.18),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: kGlassRadius,
+          child: child,
+        ),
+      ),
+    );
 
 /// Page indicator shared by paginated screens.
 class PagerBar extends StatelessWidget {

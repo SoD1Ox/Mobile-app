@@ -41,6 +41,8 @@ enum Glyph {
   building,
   dashboard,
   list,
+  chart, // analytics bars (conversion funnel)
+  note, // recruiter comment bubble
 }
 
 class GlassIcon extends StatelessWidget {
@@ -478,6 +480,31 @@ class _GlyphPainter extends CustomPainter {
           p.lineTo(12, 15);
           p.lineTo(17, 10);
         });
+      case Glyph.chart:
+        // simple bar chart: three rising bars over a baseline
+        _line(canvas, stroke, const Offset(4, 20), const Offset(20, 20));
+        _line(canvas, stroke, const Offset(8, 20), const Offset(8, 13));
+        _line(canvas, stroke, const Offset(12, 20), const Offset(12, 9));
+        _line(canvas, stroke, const Offset(16, 20), const Offset(16, 15));
+      case Glyph.note:
+        // recruiter note / comment bubble with lines
+        _path(canvas, stroke, (p) {
+          p.moveTo(4, 5.5);
+          p.lineTo(20, 5.5);
+          p.quadraticBezierTo(21, 5.5, 21, 6.5);
+          p.lineTo(21, 15.5);
+          p.quadraticBezierTo(21, 16.5, 20, 16.5);
+          p.lineTo(9, 16.5);
+          p.lineTo(5.5, 19.5);
+          p.lineTo(5.5, 16.5);
+          p.lineTo(4, 16.5);
+          p.quadraticBezierTo(3, 16.5, 3, 15.5);
+          p.lineTo(3, 6.5);
+          p.quadraticBezierTo(3, 5.5, 4, 5.5);
+          p.close();
+        });
+        _line(canvas, stroke, const Offset(7, 9.5), const Offset(17, 9.5));
+        _line(canvas, stroke, const Offset(7, 12.8), const Offset(13.5, 12.8));
     }
   }
 
