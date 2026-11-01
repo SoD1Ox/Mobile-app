@@ -42,15 +42,17 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
         company = await api.get('/companies/${v['company_id']}');
       } catch (_) {/* company may be deleted */}
       final counts = <String, int>{};
-      for (final s in ApplicationItem.pipelineOrder) {
-        try {
-          final raw = await api
-              .get('/applications', {'vacancy_id': v['id'], 'status': s, 'page_size': 1});
-          counts[s] = raw['total'] as int;
-        } catch (_) {
-          counts[s] = 0;
+      // One aggregate query instead of six sequential per-stage requests:
+      // the detail screen used to hang "loading" for seconds on a cold DB.
+      try {
+        final rawApps = await api.get('/applications',
+            {'vacancy_id': v['id'], 'page_size': 200});
+        final items = (rawApps as Map)['items'] as List? ?? const [];
+        for (final e in items) {
+          final st = (e as Map)['status']?.toString();
+          if (st != null) counts[st] = (counts[st] ?? 0) + 1;
         }
-      }
+      } catch (_) {/* funnel is optional */}
       if (!mounted) return;
       setState(() {
         _vacancy = v;

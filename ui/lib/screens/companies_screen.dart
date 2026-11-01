@@ -194,19 +194,27 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
     setState(() => _loading = true);
     try {
       final api = AppScope.read(context).api;
-      final results = await Future.wait([
-        api.get('/companies/${widget.companyId}'),
-        api.get('/companies/${widget.companyId}/contacts'),
-        api.get('/vacancies', {'page_size': 1, 'company_id': widget.companyId}),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _company =
-            CompanyItem.fromJson(Map<String, dynamic>.from(results[0] as Map));
-        _contacts = (results[1] as List)
+      // Sequential requests: a single failing call must never take the whole
+      // detail screen down with it (Future.wait rejects fast on any error).
+      final raw = await api.get('/companies/${widget.companyId}');
+      List<ContactItem> contacts = const [];
+      try {
+        final craw = await api.get('/companies/${widget.companyId}/contacts');
+        contacts = (craw as List)
             .map((e) => ContactItem.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList();
-        _vacancyCount = ((results[2] as Map)['total'] as num?)?.toInt() ?? 0;
+      } catch (_) {/* contacts are optional */}
+      int vcount = 0;
+      try {
+        final vraw = await api
+            .get('/vacancies', {'page_size': 1, 'company_id': widget.companyId});
+        vcount = ((vraw as Map)['total'] as num?)?.toInt() ?? 0;
+      } catch (_) {/* vacancy counter is optional */}
+      if (!mounted) return;
+      setState(() {
+        _company = CompanyItem.fromJson(Map<String, dynamic>.from(raw as Map));
+        _contacts = contacts;
+        _vacancyCount = vcount;
         _loading = false;
       });
     } catch (e) {

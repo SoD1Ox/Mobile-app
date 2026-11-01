@@ -66,7 +66,12 @@ class _HomeScreenState extends State<HomeScreen> {
       void Function(int?) apply, void Function(bool) setLoading) async {
     try {
       final raw = await AppScope.of(context).api.get(path, params);
-      final total = (raw as Map?)?['total'];
+      final map = raw as Map?;
+      var total = map?['total'];
+      // Fallback: if the endpoint has no `total` (older backend), count items.
+      if (total == null && map != null && map['items'] is List) {
+        total = (map['items'] as List).length;
+      }
       if (!mounted) return;
       setState(() {
         apply(total is int ? total : int.tryParse('${total ?? ''}'));
@@ -100,8 +105,13 @@ class _HomeScreenState extends State<HomeScreen> {
         (b) => _loadingVacancies = b));
     unawaited(_stat('/applications', {'page_size': 1, 'mine': true},
         (v) => _myCaseCount = v, (b) => _loadingMine = b));
-    unawaited(_stat('/applications', {'page_size': 1, 'status': 'hired'},
-        (v) => _hiredCount = v, (b) => _loadingHired = b));
+    // Hired tile: a worker's scoped list can legitimately be empty, so for
+    // them we count their own cases that reached "hired" via the items array.
+    unawaited(_stat(
+        '/applications',
+        {'page_size': 200, 'status': 'hired'},
+        (v) => _hiredCount = v,
+        (b) => _loadingHired = b));
     if (user.canManage) {
       unawaited(_stat('/candidates', {'page_size': 1},
           (v) => _candidateCount = v, (b) => _loadingCandidates = b));
