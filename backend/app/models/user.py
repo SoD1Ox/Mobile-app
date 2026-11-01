@@ -40,7 +40,14 @@ class User(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     # A recruiter (manager) is responsible for many applications
-    applications: Mapped[list["Application"]] = relationship(back_populates="manager")
+    applications: Mapped[list["Application"]] = relationship(
+        back_populates="manager", foreign_keys="Application.manager_id"
+    )
+
+    # A worker (executor) personally handles many assigned applications
+    assigned_applications: Mapped[list["Application"]] = relationship(
+        back_populates="assigned_worker", foreign_keys="Application.assigned_worker_id"
+    )
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User id={self.id} username={self.username!r} role={self.role}>"

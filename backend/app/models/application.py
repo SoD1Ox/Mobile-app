@@ -70,7 +70,19 @@ class Application(TimestampMixin, Base):
     manager_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True
     )
-    manager: Mapped["User | None"] = relationship(back_populates="applications")
+    manager: Mapped["User | None"] = relationship(
+        back_populates="applications", foreign_keys=[manager_id]
+    )
+
+    # many applications -> one assigned worker (executor / account manager).
+    # This is what gives the "worker" role its own scoped queue: a worker
+    # only sees and manages applications assigned to them personally.
+    assigned_worker_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True
+    )
+    assigned_worker: Mapped["User | None"] = relationship(
+        back_populates="assigned_applications", foreign_keys=[assigned_worker_id]
+    )
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Application id={self.id} c={self.candidate_id} v={self.vacancy_id} {self.status}>"

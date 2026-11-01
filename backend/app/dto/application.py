@@ -13,13 +13,15 @@ class ApplicationCreate(BaseModel):
     candidate_id: int = Field(gt=0)
     vacancy_id: int = Field(gt=0)
     manager_id: int | None = Field(default=None, gt=0)
+    assigned_worker_id: int | None = Field(default=None, gt=0)
 
 
 class ApplicationUpdate(BaseModel):
-    """Currently only the pipeline status and the responsible recruiter change."""
+    """Pipeline status and the responsible recruiter / assigned worker."""
 
     status: ApplicationStatus | None = None
     manager_id: int | None = Field(default=None, gt=0)
+    assigned_worker_id: int | None = Field(default=None, gt=0)
 
 
 class ApplicationRead(BaseModel):
@@ -28,6 +30,7 @@ class ApplicationRead(BaseModel):
     candidate_id: int
     vacancy_id: int
     manager_id: int | None
+    assigned_worker_id: int | None
     created_at: datetime
     updated_at: datetime
 

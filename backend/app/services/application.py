@@ -38,6 +38,7 @@ class ApplicationService:
         candidate_id: int | None = None,
         status: ApplicationStatus | None = None,
         manager_id: int | None = None,
+        assigned_worker_id: int | None = None,
     ) -> Page[ApplicationRead]:
         return self._repo.search_paginated(
             params,
@@ -45,6 +46,7 @@ class ApplicationService:
             candidate_id=candidate_id,
             status=status,
             manager_id=manager_id,
+            assigned_worker_id=assigned_worker_id,
         )
 
     def get_application(self, application_id: int) -> ApplicationRead:
@@ -60,6 +62,11 @@ class ApplicationService:
             raise NotFoundError(f"Vacancy {data.vacancy_id} not found")
         if data.manager_id is not None and self._user_repo.get_by_id(data.manager_id) is None:
             raise ValidationError(f"Manager {data.manager_id} does not exist")
+        if (
+            data.assigned_worker_id is not None
+            and self._user_repo.get_by_id(data.assigned_worker_id) is None
+        ):
+            raise ValidationError(f"Worker {data.assigned_worker_id} does not exist")
         if self._repo.exists_pair(data.candidate_id, data.vacancy_id):
             raise ConflictError("This candidate already applied to this vacancy")
         return self._repo.create(data)
@@ -68,6 +75,11 @@ class ApplicationService:
         self.get_application(application_id)  # 404 if missing
         if data.manager_id is not None and self._user_repo.get_by_id(data.manager_id) is None:
             raise ValidationError(f"Manager {data.manager_id} does not exist")
+        if (
+            data.assigned_worker_id is not None
+            and self._user_repo.get_by_id(data.assigned_worker_id) is None
+        ):
+            raise ValidationError(f"Worker {data.assigned_worker_id} does not exist")
         updated = self._repo.update(application_id, data)
         if updated is None:
             raise NotFoundError(f"Application {application_id} not found")

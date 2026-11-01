@@ -1,10 +1,12 @@
 """Application endpoints (high-volume entity — candidate pipeline).
 
-RBAC:
-    read         — any authenticated user;
-    create       — authenticated (a worker applies on behalf of a candidate);
-    update       — manager / admin (move through the pipeline);
-    delete       — admin only.
+Role hierarchy (staffing-agency domain):
+    admin   — full control: everything + delete + user management;
+    manager — recruiter: sees the WHOLE pipeline, moves statuses,
+              assigns a responsible worker to an application;
+    worker  — executor: sees ONLY applications assigned to them and may
+              move their status forward (own queue of cases);
+    unauthenticated — HTTP 401 on every endpoint.
 """
 
 from __future__ import annotations
@@ -16,8 +18,13 @@ from app.api.dependencies.providers import get_application_service
 from app.dto.application import ApplicationCreate, ApplicationRead, ApplicationUpdate
 from app.dto.common import Page, PageParams
 from app.models.application import ApplicationStatus
+from app.models.user import UserRole
 from app.services.application import ApplicationService
 from app.services.errors import ConflictError, DomainError, NotFoundError, ValidationError
+
+
+def _forbidden(detail: str) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -42,7 +49,29 @@ def list_applications(
     candidate_id: int | None = Query(default=None, ge=1),
     status_filter: ApplicationStatus | None = Query(default=None, alias="status"),
     manager_id: int | None = Query(default=None, ge=1),
+    mine: bool = Query(
+        default=False,
+        description="Worker only: return applications assigned to the current user",
+    ),
 ) -> Page[ApplicationRead]:
+    # Hierarchy: a worker's view is always scoped to their own assignments.
+    if current_user.role == UserRole.WORKER:
+        return service.list_applications(
+            PageParams(page=page, page_size=page_size),
+            vacancy_id=vacancy_id,
+            candidate_id=candidate_id,
+            status=status_filter,
+            assigned_worker_id=current_user.id,
+        )
+    if mine:
+        return service.list_applications(
+            PageParams(page=page, page_size=page_size),
+            vacancy_id=vacancy_id,
+            candidate_id=candidate_id,
+            status=status_filter,
+            manager_id=manager_id,
+            assigned_worker_id=current_user.id,
+        )
     return service.list_applications(
         PageParams(page=page, page_size=page_size),
         vacancy_id=vacancy_id,
@@ -59,7 +88,13 @@ def get_application(
     service: ApplicationService = Depends(get_application_service),
 ) -> ApplicationRead:
     try:
-        return service.get_application(application_id)
+        app = service.get_application(application_id)
+        if (
+            current_user.role == UserRole.WORKER
+            and app.assigned_worker_id != current_user.id
+        ):
+            raise _forbidden("This application is not assigned to you")
+        return app
     except NotFoundError as exc:
         raise _http_error(exc) from exc
 

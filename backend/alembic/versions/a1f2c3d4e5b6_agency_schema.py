@@ -225,6 +225,12 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column(
+            "assigned_worker_id",
+            sa.Integer(),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+        sa.Column(
             "manager_id",
             sa.Integer(),
             sa.ForeignKey("users.id", ondelete="SET NULL"),
@@ -248,6 +254,10 @@ def upgrade() -> None:
     op.create_index(op.f("ix_applications_candidate_id"), "applications", ["candidate_id"], unique=False)
     op.create_index(op.f("ix_applications_vacancy_id"), "applications", ["vacancy_id"], unique=False)
     op.create_index(op.f("ix_applications_manager_id"), "applications", ["manager_id"], unique=False)
+    op.create_index(
+        op.f("ix_applications_assigned_worker_id"), "applications",
+        ["assigned_worker_id"], unique=False,
+    )
 
     # --- comments (recruiter notes about candidates) ----------------------------------
     op.create_table(

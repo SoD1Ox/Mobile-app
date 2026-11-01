@@ -30,6 +30,7 @@ class ApplicationRepository(
         candidate_id: int | None = None,
         status: ApplicationStatus | None = None,
         manager_id: int | None = None,
+        assigned_worker_id: int | None = None,
     ) -> Page[ApplicationRead]:
         """Pagination + filtering by vacancy / candidate / pipeline status."""
         with Vis(self._factory) as session:
@@ -45,6 +46,8 @@ class ApplicationRepository(
                 conditions.append(Application.status == status)
             if manager_id is not None:
                 conditions.append(Application.manager_id == manager_id)
+            if assigned_worker_id is not None:
+                conditions.append(Application.assigned_worker_id == assigned_worker_id)
 
             for cond in conditions:
                 stmt = stmt.where(cond)
