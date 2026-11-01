@@ -7,6 +7,7 @@ service layer and translate domain errors into HTTP responses.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 
 from app.api.dependencies.auth import CurrentUser
 from app.api.dependencies.providers import get_user_service
@@ -20,6 +21,12 @@ from app.services.errors import (
 from app.services.user import UserService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class RefreshRequest(BaseModel):
+    """Input for /auth/refresh — only the refresh token is required."""
+
+    refresh_token: str
 
 
 @router.post(
@@ -50,7 +57,7 @@ def login(data: UserLogin, service: UserService = Depends(get_user_service)) -> 
 
 
 @router.post("/refresh", response_model=TokenPair, summary="Exchange refresh token for a new pair")
-def refresh(tokens: TokenPair, service: UserService = Depends(get_user_service)) -> TokenPair:
+def refresh(tokens: RefreshRequest, service: UserService = Depends(get_user_service)) -> TokenPair:
     """Body only needs ``refresh_token``; ``access_token`` may be an empty string."""
     try:
         return service.refresh(tokens.refresh_token)
