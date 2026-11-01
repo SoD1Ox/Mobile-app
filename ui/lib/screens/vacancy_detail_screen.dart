@@ -83,6 +83,68 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
     if (done && mounted) Navigator.pop(context, true);
   }
 
+  /// Self-service apply: any signed-in user can register a candidate
+  /// application straight from the vacancy card (POST /applications).
+  Future<void> _apply() async {
+    final nameCtl = TextEditingController();
+    final emailCtl = TextEditingController();
+    final phoneCtl = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Откликнуться на вакансию'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+                controller: nameCtl,
+                decoration: const InputDecoration(labelText: 'ФИО кандидата *')),
+            const SizedBox(height: 10),
+            TextField(
+                controller: emailCtl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'E-mail')),
+            const SizedBox(height: 10),
+            TextField(
+                controller: phoneCtl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Телефон')),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена')),
+          FilledButton(
+              onPressed: () {
+                if (nameCtl.text.trim().length < 2) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('Укажите ФИО (минимум 2 символа)')));
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Отправить')),
+        ],
+      ),
+    );
+    if (submitted != true || !mounted) return;
+    final api = AppScope.read(context).api;
+    final ok = await runGuarded(context, () async {
+      await api.post('/applications', {
+        'vacancy_id': widget.vacancyId,
+        'full_name': nameCtl.text.trim(),
+        if (emailCtl.text.trim().isNotEmpty) 'email': emailCtl.text.trim(),
+        if (phoneCtl.text.trim().isNotEmpty) 'phone': phoneCtl.text.trim(),
+      });
+    });
+    if (ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Отклик отправлен — кандидат добавлен в воронку')));
+      _load();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AppScope.read(context).user;
@@ -208,6 +270,21 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
                     ),
                   ),
                 ],
+              ),
+            )
+          else
+            // Worker sees the self-service apply CTA instead of CRUD buttons.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF3ED9B8)),
+                  onPressed: _apply,
+                  icon: const GlassIcon(Glyph.send, size: 18),
+                  label: const Text('Откликнуться'),
+                ),
               ),
             ),
         ],

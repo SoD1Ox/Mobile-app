@@ -14,6 +14,9 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import 'glass_stack.dart' show kGlassRadius;
+export 'glass_stack.dart' show kGlassRadius;
+
 // ---------------------------------------------------------------- palette
 // Mint-green + coral design system (dark glass base).
 // Background stops are defined in theme/glass_stack.dart (_AuroraBackground).
@@ -22,7 +25,8 @@ const Color _accentCoral = Color(0xFFFF8A66); // warm coral companion
 const Color _glassFill = Color(0x1FFFFFFF); // white @ ~12%
 const Color _glassBorder = Color(0x33FFFFFF); // white @ 20%
 
-const BorderRadius kGlassRadius = BorderRadius.all(Radius.circular(18));
+// NOTE: kGlassRadius lives in theme/glass_stack.dart (single source of truth)
+// to avoid ambiguous_import when a file imports both theme libraries.
 
 /// Public accent color used by chips / links across screens.
 const Color kAccentColor = _accent;
