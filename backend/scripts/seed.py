@@ -130,7 +130,8 @@ def main(force: bool = False) -> None:
     import app.models  # noqa: F401  (register mappers on Base.metadata)
 
     engine = get_engine()
-    existing = set(sa_inspect(engine).get_table_names())
+    inspector = sa_inspect(engine)
+    existing = set(inspector.get_table_names())
     if "users" not in existing:
         print("Schema missing -> creating tables from ORM metadata ...")
         Base.metadata.create_all(engine)
@@ -146,6 +147,32 @@ def main(force: bool = False) -> None:
         except Exception:
             pass  # non-fatal; alembic CLI still works afterwards
         existing = set(sa_inspect(engine).get_table_names())
+
+    # --- Schema drift self-heal -------------------------------------------
+    # If the DB was migrated by an *older* revision of the code (e.g. the
+    # applications table exists but lacks columns added later, such as
+    # assigned_worker_id), create any missing tables from ORM metadata and
+    # add missing columns, so seed and API work regardless of whether
+    # `alembic upgrade head` re-ran after a git pull.
+    Base.metadata.create_all(engine, checkfirst=True)
+    inspector = sa_inspect(engine)
+    existing = set(inspector.get_table_names())
+    if "applications" in existing:
+        db_cols = {c["name"] for c in inspector.get_columns("applications")}
+        app_table = Base.metadata.tables["applications"]
+        missing = set(app_table.columns.keys()) - db_cols - {"id", "created_at", "updated_at"}
+        for col in sorted(missing):
+            column = app_table.columns[col]
+            try:
+                col_type = column.type.compile(dialect=engine.dialect)
+                nullable = "" if column.nullable else " NOT NULL DEFAULT NULL"
+                with engine.begin() as conn:
+                    conn.exec_driver_sql(
+                        f'ALTER TABLE applications ADD COLUMN "{col}" '
+                        f'{col_type}{nullable}')
+                print(f"Schema drift fixed: added column applications.{col}")
+            except Exception as exc:  # pragma: no cover - best effort
+                print(f"Could not auto-add applications.{col}: {exc}")
 
     with Vis(factory) as session:
         users_total = session.scalar(select(func.count()).select_from(User)) or 0
