@@ -205,6 +205,24 @@ class CommentItem {
         createdAt = DateTime.parse(j['created_at']);
 }
 
+/// Contact person of a partner company.
+class ContactItem {
+  final int id;
+  final String fullName;
+  final String? position;
+  final String? phone;
+  final String? email;
+  final int companyId;
+
+  ContactItem.fromJson(Map<String, dynamic> j)
+      : id = j['id'],
+        fullName = j['full_name'],
+        position = j['position'],
+        phone = j['phone'],
+        email = j['email'],
+        companyId = j['company_id'];
+}
+
 /// Paginated envelope returned by list endpoints (large-data mechanism).
 class DataPage<T> {
   final List<T> items;

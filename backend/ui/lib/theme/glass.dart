@@ -24,6 +24,9 @@ const Color _glassBorder = Color(0x33FFFFFF); // white @ 20%
 
 const BorderRadius kGlassRadius = BorderRadius.all(Radius.circular(18));
 
+/// Public accent color used by chips / links across screens.
+const Color kAccentColor = _accent;
+
 /// App-wide dark Material-3 theme built around the glass look.
 ThemeData buildGlassTheme() {
   final scheme = ColorScheme.fromSeed(

@@ -1,6 +1,6 @@
-/// Authenticated app shell: dashboard + tab navigation (Задачи / Проекты /
-/// Клиенты / Пользователи) with an IndexedStack so every tab keeps its state
-/// (search text, filters, loaded pages) while switching tabs.
+/// Authenticated app shell: dashboard + tab navigation (Вакансии / Кандидаты /
+/// Воронка / Компании [+ Пользователи для админа]) with an IndexedStack so
+/// every tab keeps its state (search text, filters, loaded pages).
 library;
 
 import 'package:flutter/material.dart';
@@ -8,12 +8,14 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../theme/glass.dart';
+import '../theme/glass_stack.dart';
 import '../widgets/common.dart';
 import '../widgets/glass_icons.dart';
-import 'clients_screen.dart';
-import 'projects_screen.dart';
-import 'tasks_screen.dart';
+import 'applications_screen.dart';
+import 'candidates_screen.dart';
+import 'companies_screen.dart';
 import 'users_screen.dart';
+import 'vacancies_screen.dart';
 
 /// Bottom-nav destination built from custom vector glyphs (no Material Icons).
 class _Dest {
@@ -30,9 +32,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int? _taskCount;
-  int? _projectCount;
-  int? _clientCount;
+  int? _vacancyCount;
+  int? _candidateCount;
+  int? _newAppCount;
+  int? _hiredCount;
   bool _statsLoading = false;
 
   /// Currently selected bottom-navigation tab.
@@ -49,15 +52,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final api = AppScope.of(context).api;
     try {
       final results = await Future.wait([
-        api.get('/tasks', {'page_size': 1}),
-        api.get('/projects', {'page_size': 1}),
-        api.get('/clients', {'page_size': 1}),
+        api.get('/vacancies', {'page_size': 1}),
+        api.get('/candidates', {'page_size': 1}),
+        api.get('/applications', {'page_size': 1, 'status': 'new'}),
+        api.get('/applications', {'page_size': 1, 'status': 'hired'}),
       ]);
       if (!mounted) return;
       setState(() {
-        _taskCount = results[0]['total'];
-        _projectCount = results[1]['total'];
-        _clientCount = results[2]['total'];
+        _vacancyCount = results[0]['total'];
+        _candidateCount = results[1]['total'];
+        _newAppCount = results[2]['total'];
+        _hiredCount = results[3]['total'];
         _statsLoading = false;
       });
     } catch (e) {
@@ -85,12 +90,11 @@ class _HomeScreenState extends State<HomeScreen> {
     // Tab order is fixed; the admin tab is appended only for admins, so the
     // indices of the destinations below must stay in sync with this list.
     final tabs = <Widget>[
-      // ==================== Dashboard tab ====================
       _dashboard(user, greeting, scope),
-      // ==================== section tabs =====================
-      const TasksScreen(),
-      const ProjectsScreen(),
-      const ClientsScreen(),
+      const VacanciesScreen(),
+      const CandidatesScreen(),
+      const ApplicationsScreen(),
+      const CompaniesScreen(),
       if (user.isAdmin) const UsersScreen(),
     ];
 
@@ -105,10 +109,11 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: (i) => setState(() => _tab = i),
             destinations: [
               const _Dest(Glyph.dashboard, 'Главная'),
-              const _Dest(Glyph.task, 'Задачи'),
-              const _Dest(Glyph.folder, 'Проекты'),
-              const _Dest(Glyph.building, 'Клиенты'),
-              if (user.isAdmin) const _Dest(Glyph.people, 'Люди'),
+              const _Dest(Glyph.briefcase, 'Вакансии'),
+              const _Dest(Glyph.people, 'Кандидаты'),
+              const _Dest(Glyph.kanban, 'Воронка'),
+              const _Dest(Glyph.building, 'Компании'),
+              if (user.isAdmin) const _Dest(Glyph.server, 'Люди'),
             ],
           ),
         ),
@@ -120,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _dashboard(AppUser user, String greeting, AppScope scope) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Task Tracker'),
+        title: const Text('Кадровое агентство'),
         actions: [
           GlassIconButton(Glyph.logout,
               tooltip: 'Выйти',
@@ -139,39 +144,39 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // -------- greeting card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      child: Text(user.fullName.characters.first.toUpperCase(),
-                          style: const TextStyle(fontSize: 24)),
+            // -------- greeting card (real glass: one BackdropFilter)
+            RealGlassCard(
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: kAccentColor.withOpacity(0.35),
+                    child: Text(user.fullName.characters.first.toUpperCase(),
+                        style: const TextStyle(fontSize: 24)),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('$greeting, ${user.fullName}!',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: 4),
+                        Text('@${user.username} · ${user.email}',
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.7))),
+                        const SizedBox(height: 6),
+                        StatusChip(
+                            label: user.roleLabel,
+                            color: user.isAdmin
+                                ? Colors.purple
+                                : user.isManager
+                                    ? Colors.blue
+                                    : Colors.teal),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('$greeting, ${user.fullName}!',
-                              style: Theme.of(context).textTheme.titleLarge),
-                          const SizedBox(height: 4),
-                          Text('@${user.username} · ${user.email}'),
-                          const SizedBox(height: 6),
-                          StatusChip(
-                              label: user.roleLabel,
-                              color: user.isAdmin
-                                  ? Colors.purple
-                                  : user.isManager
-                                      ? Colors.blue
-                                      : Colors.teal),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -181,23 +186,34 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                     child: _StatTile(
-                        glyph: Glyph.task,
-                        label: 'Задачи',
-                        value: _taskCount,
+                        glyph: Glyph.briefcase,
+                        label: 'Вакансии',
+                        value: _vacancyCount,
                         loading: _statsLoading)),
                 const SizedBox(width: 8),
                 Expanded(
                     child: _StatTile(
-                        glyph: Glyph.folder,
-                        label: 'Проекты',
-                        value: _projectCount,
+                        glyph: Glyph.people,
+                        label: 'Кандидаты',
+                        value: _candidateCount,
+                        loading: _statsLoading)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                    child: _StatTile(
+                        glyph: Glyph.send,
+                        label: 'Новых откликов',
+                        value: _newAppCount,
                         loading: _statsLoading)),
                 const SizedBox(width: 8),
                 Expanded(
                     child: _StatTile(
-                        glyph: Glyph.building,
-                        label: 'Клиенты',
-                        value: _clientCount,
+                        glyph: Glyph.chart,
+                        label: 'Трудоустроено',
+                        value: _hiredCount,
                         loading: _statsLoading)),
               ],
             ),
@@ -207,30 +223,35 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('Разделы', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             _NavCard(
-                glyph: Glyph.task,
-                title: 'Задачи',
-                subtitle: 'Поиск, фильтры, пагинация, комментарии',
+                glyph: Glyph.briefcase,
+                title: 'Вакансии',
+                subtitle: 'Поиск, фильтры, пагинация, создание и правка',
                 onTap: () => _openSection(1)),
             _NavCard(
-                glyph: Glyph.folder,
-                title: 'Проекты',
-                subtitle: user.canManage
-                    ? 'Просмотр и управление проектами'
-                    : 'Просмотр проектов',
+                glyph: Glyph.people,
+                title: 'Кандидаты',
+                subtitle: 'База соискателей, заметки рекрутеров, история откликов',
                 onTap: () => _openSection(2)),
             _NavCard(
-                glyph: Glyph.building,
-                title: 'Клиенты',
+                glyph: Glyph.kanban,
+                title: 'Воронка найма',
                 subtitle: user.canManage
-                    ? 'Клиенты и контактные лица'
-                    : 'Просмотр клиентов',
+                    ? 'Kanban-доска: перетаскивание карточек между этапами'
+                    : 'Этапы обработки откликов',
                 onTap: () => _openSection(3)),
+            _NavCard(
+                glyph: Glyph.building,
+                title: 'Компании',
+                subtitle: user.canManage
+                    ? 'Партнёры и контактные лица'
+                    : 'Просмотр компаний-партнёров',
+                onTap: () => _openSection(4)),
             if (user.isAdmin)
               _NavCard(
-                  glyph: Glyph.people,
+                  glyph: Glyph.server,
                   title: 'Пользователи',
                   subtitle: 'Управление учётными записями и ролями (админ)',
-                  onTap: () => _openSection(4)),
+                  onTap: () => _openSection(5)),
           ],
         ),
       ),
@@ -265,7 +286,9 @@ class _StatTile extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2))
                   : Text('${value ?? '—'}',
                       style: Theme.of(context).textTheme.titleLarge),
-              Text(label, style: Theme.of(context).textTheme.bodySmall),
+              Text(label,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall),
             ],
           ),
         ),
@@ -354,8 +377,8 @@ class _GlassNavBar extends StatelessWidget {
                                     : FontWeight.w500,
                                 color: i == index
                                     ? Colors.white
-                                    : Colors.white
-                                        .withOpacity(0.55))),
+                                    : Colors
+                                        .white.withOpacity(0.55))),
                       ],
                     ),
                   ),
