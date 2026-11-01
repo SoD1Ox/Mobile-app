@@ -3,3 +3,11 @@
 # Логи и артефакты
 backend/server.log
 *.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+backend/.env
+*.db
