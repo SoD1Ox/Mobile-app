@@ -1,7 +1,8 @@
-"""FastAPI application entry point (mobile-app backend).
+"""FastAPI application entry point (staffing agency backend).
 
-Wires together: routers (auth/users/projects/tasks/clients/tags), CORS and
-domain-exception handlers.  Contains NO business logic — that lives in services.
+Wires together: routers (auth/users/companies/vacancies/candidates/
+applications/skills), CORS and domain-exception handlers.
+Contains NO business logic — that lives in services.
 """
 
 from __future__ import annotations
@@ -11,7 +12,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app import __version__
-from app.api.endpoints import auth, clients, projects, tags, tasks, users
+from app.api.endpoints import (
+    applications,
+    auth,
+    candidates,
+    companies,
+    skills,
+    users,
+    vacancies,
+)
 from app.config.settings import settings
 from app.services.errors import (
     AuthenticationError,
@@ -26,7 +35,7 @@ app = FastAPI(
     title=settings.api_title,
     version=settings.api_version,
     description=(
-        "Task-tracker API for the mobile UI.\n\n"
+        "Staffing-agency (кадровое агентство) API for the mobile UI.\n\n"
         "Layers: api -> services -> repositories -> SQLAlchemy ORM -> PostgreSQL.\n"
         "DTOs (pydantic) isolate API from ORM; sessions are opened per DB operation "
         "through the ``Vis`` context manager."
@@ -49,10 +58,11 @@ app.add_middleware(
 # ------------------------------------------------------------------ routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
-app.include_router(projects.router, prefix="/api/v1")
-app.include_router(tasks.router, prefix="/api/v1")
-app.include_router(clients.router, prefix="/api/v1")
-app.include_router(tags.router, prefix="/api/v1")
+app.include_router(companies.router, prefix="/api/v1")
+app.include_router(vacancies.router, prefix="/api/v1")
+app.include_router(candidates.router, prefix="/api/v1")
+app.include_router(applications.router, prefix="/api/v1")
+app.include_router(skills.router, prefix="/api/v1")
 
 
 # ------------------------------------------- domain error -> HTTP translation

@@ -1,6 +1,4 @@
-*.bundle
-*.tar.gz
-
-# Python cache
+.env
 __pycache__/
 *.pyc
+.env.local

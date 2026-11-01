@@ -15,15 +15,15 @@ from app.db.base import Base
 from app.models.mixins import TimestampMixin
 
 if TYPE_CHECKING:
-    from app.models.task import Task
+    from app.models.application import Application
 
 import enum
 
 
 class UserRole(str, enum.Enum):
-    ADMIN = "admin"
-    MANAGER = "manager"
-    WORKER = "worker"
+    ADMIN = "admin"          # администратор агентства
+    MANAGER = "manager"      # кадровый менеджер / рекрутер
+    WORKER = "worker"        # сотрудник (соискатель) с ограниченным доступом
 
 
 class User(TimestampMixin, Base):
@@ -39,8 +39,8 @@ class User(TimestampMixin, Base):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    # A user owns many tasks (FK tasks.author_id -> users.id)
-    tasks: Mapped[list["Task"]] = relationship(back_populates="author")
+    # A recruiter (manager) is responsible for many applications
+    applications: Mapped[list["Application"]] = relationship(back_populates="manager")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User id={self.id} username={self.username!r} role={self.role}>"

@@ -16,9 +16,11 @@ class ContactRepository(BaseRepository[Contact, ContactRead, ContactCreate, Cont
     model = Contact
     read_dto = ContactRead
 
-    def list_by_client(self, client_id: int) -> list[ContactRead]:
+    def list_by_company(self, company_id: int) -> list[ContactRead]:
         with Vis(self._factory) as session:
             rows: Sequence[Contact] = session.scalars(
-                select(Contact).where(Contact.client_id == client_id).order_by(Contact.full_name)
+                select(Contact)
+                .where(Contact.company_id == company_id)
+                .order_by(Contact.full_name)
             ).all()
             return [ContactRead.model_validate(r, from_attributes=True) for r in rows]

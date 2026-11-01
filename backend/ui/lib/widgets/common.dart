@@ -46,7 +46,7 @@ class AppTextField extends StatelessWidget {
 
 /// Glass dropdown that matches [AppTextField] styling.
 class AppDropdown<T> extends StatelessWidget {
-  final T value;
+  final T? value;
   final String label;
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?> onChanged;
@@ -66,9 +66,11 @@ class AppDropdown<T> extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: DropdownButtonFormField<T>(
           value: value,
+          isExpanded: true,
           decoration: InputDecoration(labelText: label),
           dropdownColor: const Color(0xF216294E),
           style: const TextStyle(color: Colors.white),
+          menuMaxHeight: 360,
           items: items,
           onChanged: onChanged,
           validator: validator,
@@ -97,20 +99,14 @@ class StatusChip extends StatelessWidget {
       );
 }
 
+/// Hiring-pipeline stage colors (application statuses).
 Color statusColor(String s) => switch (s) {
       'new' => Color(0xFF7986CB),
-      'in_progress' => Color(0xFF42A5F5),
-      'review' => Color(0xFF9575CD),
-      'done' => Color(0xFF66BB6A),
-      'canceled' => Color(0xFFEF5350),
-      _ => Colors.grey,
-    };
-
-Color priorityColor(String p) => switch (p) {
-      'low' => Color(0xFF66BB6A),
-      'medium' => Color(0xFFFFA726),
-      'high' => Color(0xFFFF7043),
-      'critical' => Color(0xFFEF5350),
+      'review' => Color(0xFF42A5F5),
+      'interview' => Color(0xFFAB47BC),
+      'offer' => Color(0xFFFFA726),
+      'hired' => Color(0xFF66BB6A),
+      'rejected' => Color(0xFFEF5350),
       _ => Colors.grey,
     };
 

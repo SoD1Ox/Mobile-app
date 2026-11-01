@@ -6,25 +6,36 @@ no lazy-loaded attributes — so a closed session can never raise
 ``DetachedInstanceError`` through them.
 """
 
-from app.dto.common import Page, PageParams
-from app.dto.user import (
-    UserCreate,
-    UserLogin,
-    UserRead,
-    UserRegister,
-    UserUpdate,
-)
+from app.dto.application import ApplicationCreate, ApplicationRead, ApplicationUpdate
 from app.dto.auth import TokenPair, TokenPayload
-from app.dto.project import ProjectCreate, ProjectRead, ProjectUpdate
-from app.dto.task import TaskCreate, TaskRead, TaskUpdate
-from app.dto.client import ClientCreate, ClientRead, ClientUpdate
-from app.dto.tag import TagRead
+from app.dto.candidate import CandidateCreate, CandidateRead, CandidateUpdate
 from app.dto.comment import CommentCreate, CommentRead
+from app.dto.common import Page, PageParams
+from app.dto.company import CompanyCreate, CompanyRead, CompanyUpdate
 from app.dto.contact import ContactCreate, ContactRead, ContactUpdate
+from app.dto.skill import SkillCreate, SkillRead
+from app.dto.user import UserCreate, UserLogin, UserRead, UserRegister, UserUpdate
+from app.dto.vacancy import VacancyCreate, VacancyRead, VacancyUpdate
 
 __all__ = [
+    "ApplicationCreate",
+    "ApplicationRead",
+    "ApplicationUpdate",
+    "CandidateCreate",
+    "CandidateRead",
+    "CandidateUpdate",
+    "CommentCreate",
+    "CommentRead",
+    "CompanyCreate",
+    "CompanyRead",
+    "CompanyUpdate",
+    "ContactCreate",
+    "ContactRead",
+    "ContactUpdate",
     "Page",
     "PageParams",
+    "SkillCreate",
+    "SkillRead",
     "TokenPair",
     "TokenPayload",
     "UserCreate",
@@ -32,19 +43,7 @@ __all__ = [
     "UserRead",
     "UserRegister",
     "UserUpdate",
-    "ProjectCreate",
-    "ProjectRead",
-    "ProjectUpdate",
-    "TaskCreate",
-    "TaskRead",
-    "TaskUpdate",
-    "ClientCreate",
-    "ClientRead",
-    "ClientUpdate",
-    "TagRead",
-    "CommentCreate",
-    "CommentRead",
-    "ContactCreate",
-    "ContactRead",
-    "ContactUpdate",
+    "VacancyCreate",
+    "VacancyRead",
+    "VacancyUpdate",
 ]

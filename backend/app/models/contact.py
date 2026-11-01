@@ -1,4 +1,4 @@
-"""Contact ORM model (auxiliary entity: contact person of a client)."""
+"""Contact ORM model (auxiliary entity: contact person of a partner company)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.models.client import Client
+    from app.models.company import Company
 
 
 class Contact(Base):
@@ -22,11 +22,11 @@ class Contact(Base):
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     email: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
-    # many contacts -> one client
-    client_id: Mapped[int] = mapped_column(
-        ForeignKey("clients.id", ondelete="CASCADE"), index=True, nullable=False
+    # many contacts -> one company
+    company_id: Mapped[int] = mapped_column(
+        ForeignKey("companies.id", ondelete="CASCADE"), index=True, nullable=False
     )
-    client: Mapped["Client"] = relationship(back_populates="contacts")
+    company: Mapped["Company"] = relationship(back_populates="contacts")
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Contact id={self.id} full_name={self.full_name!r}>"

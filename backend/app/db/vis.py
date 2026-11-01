@@ -29,11 +29,15 @@ def get_engine() -> Engine:
     """Lazily create the singleton SQLAlchemy engine for PostgreSQL."""
     global _engine
     if _engine is None:
-        _engine = create_engine(
-            settings.database_url,
-            pool_pre_ping=True,
-            echo=False,
-        )
+        url = settings.database_url
+        kwargs: dict = {"pool_pre_ping": True, "echo": False}
+        if url.startswith("sqlite"):
+            # SQLite ignores pool args used for PostgreSQL and forbids
+            # cross-thread DB access by default (FastAPI runs sync
+            # endpoints in a threadpool).
+            kwargs.pop("pool_pre_ping")
+            kwargs["connect_args"] = {"check_same_thread": False}
+        _engine = create_engine(url, **kwargs)
     return _engine
 
 

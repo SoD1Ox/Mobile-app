@@ -1,10 +1,11 @@
-/// Root of the Task-tracker UI.
+/// Root of the «Кадровое агентство» (staffing agency) UI.
 ///
 /// Responsibilities:
 ///  * load saved JWT tokens on start and restore the session via /auth/me;
 ///  * switch between LoginScreen and the authenticated app shell;
 ///  * expose AppScope (ApiClient + current user) to the whole widget tree;
-///  * global Material-3 theme so every screen shares one style.
+///  * global glass Material-3 theme + the app-wide liquid-glass backdrop
+///    stack (GlassRoot) shared by every screen.
 library;
 
 import 'package:flutter/material.dart';
@@ -15,20 +16,21 @@ import 'models/models.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
 import 'theme/glass.dart';
+import 'theme/glass_stack.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const TaskTrackerApp());
+  runApp(const StaffingAgencyApp());
 }
 
-class TaskTrackerApp extends StatefulWidget {
-  const TaskTrackerApp({super.key});
+class StaffingAgencyApp extends StatefulWidget {
+  const StaffingAgencyApp({super.key});
 
   @override
-  State<TaskTrackerApp> createState() => _TaskTrackerAppState();
+  State<StaffingAgencyApp> createState() => _StaffingAgencyAppState();
 }
 
-class _TaskTrackerAppState extends State<TaskTrackerApp> {
+class _StaffingAgencyAppState extends State<StaffingAgencyApp> {
   final ApiClient _api = ApiClient();
   AppUser? _user;
   bool _bootstrapping = true;
@@ -60,7 +62,7 @@ class _TaskTrackerAppState extends State<TaskTrackerApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Task Tracker',
+      title: 'Кадровое агентство',
       debugShowCheckedModeBanner: false,
       theme: buildGlassTheme(),
       home: AppScope(
@@ -74,9 +76,11 @@ class _TaskTrackerAppState extends State<TaskTrackerApp> {
                 ? const LoginScreen()
                 : const HomeScreen(),
       ),
-      // The glass background is painted once here so it sits behind every
-      // route (including pushed screens) without each screen re-wrapping it.
-      builder: (context, child) => AppBackground(
+      // One app-wide backdrop: aurora gradient at the bottom, page tree in
+      // the middle, a single live-blur frosted overlay strip on top that the
+      // current screen fills via FrostedHeader. Painted once per frame —
+      // screens never re-wrap the background themselves.
+      builder: (context, child) => GlassRoot(
         child: SafeArea(child: child ?? const SizedBox()),
       ),
     );
