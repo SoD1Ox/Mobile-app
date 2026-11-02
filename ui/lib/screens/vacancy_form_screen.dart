@@ -79,10 +79,14 @@ class _VacancyFormScreenState extends State<VacancyFormScreen> {
       ]);
       if (!mounted) return;
       setState(() {
-        _companies =
-            DataPage.fromJson(results[0] as Map<String, dynamic>, CompanyItem.fromJson).items;
-        _skills = ((results[1] as List))
-            .map((e) => SkillItem.fromJson(Map<String, dynamic>.from(e as Map)))
+        _companies = DataPage.fromJson(
+            results[0] is Map<String, dynamic>
+                ? results[0] as Map<String, dynamic>
+                : <String, dynamic>{},
+            CompanyItem.fromJson).items;
+        _skills = (results[1] is List ? results[1] as List : const [])
+            .whereType<Map>()
+            .map((e) => SkillItem.fromJson(Map<String, dynamic>.from(e)))
             .toList()
           ..sort((a, b) => a.name.compareTo(b.name));
         _loading = false;

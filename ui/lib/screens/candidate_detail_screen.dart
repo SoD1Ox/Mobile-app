@@ -50,14 +50,18 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
           await api.get('/candidates/${widget.candidateId}/comments');
       final appsRaw =
           await api.get('/applications', {'candidate_id': c['id'], 'page_size': 100});
-      final apps = DataPage.fromJson(appsRaw as Map<String, dynamic>, ApplicationItem.fromJson)
-          .items;
+      final apps = DataPage.fromJson(
+        appsRaw is Map<String, dynamic>
+            ? appsRaw
+            : <String, dynamic>{}, // unexpected shape -> empty page, no crash
+        ApplicationItem.fromJson,
+      ).items;
       // Resolve vacancy titles for the history list (small N — sequential is fine).
       final titles = <int, String>{};
       for (final a in apps.toSet().map((e) => e.vacancyId)) {
         try {
           final v = await api.get('/vacancies/$a') as Map<String, dynamic>;
-          titles[a] = v['title'] as String;
+          titles[a] = '${v['title'] ?? 'Вакансия #$a'}';
         } catch (_) {
           titles[a] = 'Вакансия #$a';
         }

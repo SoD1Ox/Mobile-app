@@ -42,17 +42,30 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
         company = await api.get('/companies/${v['company_id']}');
       } catch (_) {/* company may be deleted */}
       final counts = <String, int>{};
-      // One aggregate query instead of six sequential per-stage requests:
-      // the detail screen used to hang "loading" for seconds on a cold DB.
+      // Preferred path: one GROUP BY aggregate (fast, no row transfer).
       try {
-        final rawApps = await api.get('/applications',
-            {'vacancy_id': v['id'], 'page_size': 200});
-        final items = (rawApps as Map)['items'] as List? ?? const [];
-        for (final e in items) {
-          final st = (e as Map)['status']?.toString();
-          if (st != null) counts[st] = (counts[st] ?? 0) + 1;
+        final st = await api.get('/applications/stats');
+        if (st is Map && st['by_status'] is Map) {
+          (st['by_status'] as Map).forEach((k, val) {
+            final n = val is num ? val.toInt() : int.tryParse('$val') ?? 0;
+            counts['$k'] = n;
+          });
+        } else {
+          throw Exception('unexpected stats shape');
         }
-      } catch (_) {/* funnel is optional */}
+      } catch (_) {
+        // Fallback for an older backend without /stats: page through rows.
+        try {
+          final rawApps = await api.get('/applications',
+              {'vacancy_id': v['id'], 'page_size': 200});
+          final items = (rawApps is Map ? rawApps['items'] : null) as List? ??
+              const [];
+          for (final e in items) {
+            final st = (e as Map)['status']?.toString();
+            if (st != null) counts[st] = (counts[st] ?? 0) + 1;
+          }
+        } catch (_) {/* funnel is optional */}
+      }
       if (!mounted) return;
       setState(() {
         _vacancy = v;

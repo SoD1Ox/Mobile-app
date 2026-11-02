@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Sequence
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from app.db.vis import Vis
 from app.dto.application import ApplicationCreate, ApplicationRead, ApplicationUpdate
@@ -28,6 +29,36 @@ class ApplicationRepository(
 ):
     model = Application
     read_dto = ApplicationRead
+
+    # ------------------------------------------------- base-class contract
+    def _to_read(self, obj: Application | None) -> ApplicationRead | None:
+        """DTO conversion used by the generic CRUD helpers of BaseRepository.
+
+        Enrichment needs an active session (relations are resolved via
+        ``session.get``), so we re-open one here; outside any DB context we
+        fall back to plain validation — display fields simply stay null and
+        the client renders them as "—".
+        """
+        if obj is None:
+            return None
+        try:
+            state = object.__getattribute__(obj, "_sa_instance_state")
+            session = getattr(state, "session", None)
+            if session is not None:
+                return self._enrich(session, obj)
+        except Exception:
+            pass
+        # Detached instance (e.g. after session close): open a fresh session
+        # by primary key so the API response still carries display fields.
+        try:
+            pk = obj.id
+            with Vis(self._factory) as new_session:
+                fresh = new_session.get(Application, pk)
+                if fresh is not None:
+                    return self._enrich(new_session, fresh)
+        except Exception:
+            pass
+        return ApplicationRead.model_validate(obj, from_attributes=True)
 
     # ------------------------------------------------------------------ enrich
     @staticmethod

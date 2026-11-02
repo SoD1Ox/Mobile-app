@@ -37,10 +37,14 @@ class _UsersScreenState extends State<UsersScreen> {
     try {
       final raw = await AppScope.read(context).api.get('/users');
       if (!mounted) return;
-      setState(() {
-        _users = (raw as List).cast<Map<String, dynamic>>();
-        _loading = false;
-      });
+      // Tolerant parsing: any unexpected JSON shape must never crash the
+      // screen with "Unexpected null value" — bad entries are skipped.
+      final list = raw is List ? raw : const [];
+      _users = list
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      _loading = false;
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);

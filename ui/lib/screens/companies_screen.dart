@@ -200,15 +200,16 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
       List<ContactItem> contacts = const [];
       try {
         final craw = await api.get('/companies/${widget.companyId}/contacts');
-        contacts = (craw as List)
-            .map((e) => ContactItem.fromJson(Map<String, dynamic>.from(e as Map)))
+        contacts = (craw is List ? craw : const [])
+            .whereType<Map>()
+            .map((e) => ContactItem.fromJson(Map<String, dynamic>.from(e)))
             .toList();
       } catch (_) {/* contacts are optional */}
       int vcount = 0;
       try {
         final vraw = await api
             .get('/vacancies', {'page_size': 1, 'company_id': widget.companyId});
-        vcount = ((vraw as Map)['total'] as num?)?.toInt() ?? 0;
+        if (vraw is Map) vcount = (vraw['total'] as num?)?.toInt() ?? 0;
       } catch (_) {/* vacancy counter is optional */}
       if (!mounted) return;
       setState(() {

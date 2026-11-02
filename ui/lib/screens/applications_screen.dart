@@ -63,10 +63,10 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
         try {
           final res = await api.get('/candidates',
               {'ids': missingCand.join(','), 'page_size': missingCand.length});
-          for (final e
-              in (res as Map)['items'] as List) {
-            final m = Map<String, dynamic>.from(e as Map);
-            names[m['id'] as int] = m['full_name'] as String? ?? '—';
+          final items = (res is Map && res['items'] is List) ? res['items'] as List : const [];
+          for (final e in items.whereType<Map>()) {
+            final m = Map<String, dynamic>.from(e);
+            names[(m['id'] as num?)?.toInt() ?? 0] = m['full_name'] as String? ?? '—';
           }
         } catch (_) {/* leave unknown */}
       }
@@ -74,9 +74,10 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
         try {
           final res = await api.get('/vacancies',
               {'ids': missingVac.join(','), 'page_size': missingVac.length});
-          for (final e in (res as Map)['items'] as List) {
-            final m = Map<String, dynamic>.from(e as Map);
-            titles[m['id'] as int] = m['title'] as String? ?? '—';
+          final items = (res is Map && res['items'] is List) ? res['items'] as List : const [];
+          for (final e in items.whereType<Map>()) {
+            final m = Map<String, dynamic>.from(e);
+            titles[(m['id'] as num?)?.toInt() ?? 0] = m['title'] as String? ?? '—';
           }
         } catch (_) {}
       }

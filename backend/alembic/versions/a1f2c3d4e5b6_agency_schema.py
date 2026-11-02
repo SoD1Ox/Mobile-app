@@ -53,6 +53,9 @@ def upgrade() -> None:
             server_default="worker",
         ),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.true()),
+        # Self-learning recruiter performance score (0..1), averaged from
+        # the applications pipeline.  Must stay in sync with User model.
+        sa.Column("completion_score", sa.Float(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -236,6 +239,12 @@ def upgrade() -> None:
             sa.ForeignKey("users.id", ondelete="SET NULL"),
             nullable=True,
         ),
+        # --- audit trail (StatusHistoryMixin) -------------------------------
+        sa.Column("prev_status", sa.String(length=32), nullable=True),
+        sa.Column(
+            "status_history", sa.Text(), nullable=False, server_default=""
+        ),
+        sa.Column("completion_score", sa.Float(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
