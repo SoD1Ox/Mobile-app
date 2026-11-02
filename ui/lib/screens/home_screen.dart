@@ -355,6 +355,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Dashboard tab content (greeting, stats, quick links to the sections).
   Widget _dashboard(AppUser user, String greeting, AppScope scope) {
+    // The root scaffold extends the body behind the floating glass nav bar.
+    // Reserve its height plus the device's system inset so the last dashboard
+    // shortcut can scroll fully above both overlays.
+    final bottomClearance = MediaQuery.viewPaddingOf(context).bottom + 96;
     return Scaffold(
       appBar: AppBar(
         title: Text(user.isAdmin
@@ -419,7 +423,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         onRefresh: _loadStats,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, bottomClearance),
           children: [
             Text(user.canManage ? 'Обзор команды' : 'Мой обзор',
                 style: Theme.of(context).textTheme.titleLarge),
