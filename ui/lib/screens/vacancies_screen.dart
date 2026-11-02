@@ -318,7 +318,8 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                 width: double.infinity,
                 child: FilledButton.icon(
                   onPressed: () => _openForm(),
-                  icon: const GlassIcon(Glyph.add, size: 20),
+                  icon: GlassIcon(Glyph.add,
+                      size: 20, color: Theme.of(context).colorScheme.onPrimary),
                   label: const Text('Новая вакансия'),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(50),

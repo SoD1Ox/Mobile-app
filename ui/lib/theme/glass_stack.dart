@@ -1,4 +1,4 @@
-/// True "liquid glass" backdrop stack.
+/// Lightweight app background and reusable surfaces.
 ///
 /// Architecture:
 ///  * [GlassRoot] is installed once in `MaterialApp.builder`.  It paints the
@@ -18,10 +18,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 // ---------------------------------------------------------------- palette
-const Color kAccent = Color(0xFF3ED9B8); // mint
-const Color kCoral = Color(0xFFFF8A66); // warm coral
-const Color kGlassBorder = Color(0x33FFFFFF);
-const BorderRadius kGlassRadius = BorderRadius.all(Radius.circular(18));
+const Color kAccent = Color(0xFFB8E76A);
+const Color kCoral = Color(0xFFE98263);
+const Color kGlassBorder = Color(0xFFDDE3D9);
+const BorderRadius kGlassRadius = BorderRadius.all(Radius.circular(20));
 
 /// Gaussian backdrop filters are expensive on phones, especially while a list
 /// scrolls. Keep the live effect for desktop, and use tinted surfaces on mobile.
@@ -149,7 +149,7 @@ class _OverlayHost extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: isDark ? const Color(0x553ED9B8) : const Color(0x55749B90),
+            color: isDark ? const Color(0xFF3D5049) : const Color(0xFFDDE3D9),
           ),
         ),
         gradient: LinearGradient(
@@ -158,8 +158,8 @@ class _OverlayHost extends StatelessWidget {
           colors: _useLiveBackdropBlur
               ? const [Color(0x16FFFFFF), Color(0x08FFFFFF)]
               : isDark
-                  ? const [Color(0xF51B3732), Color(0xF2132E2A)]
-                  : const [Color(0xF8F7FCF9), Color(0xF1EAF4EF)],
+                  ? const [Color(0xF51B2925), Color(0xF2172320)]
+                  : const [Color(0xF8FCFBF7), Color(0xF1F4F3EC)],
         ),
       ),
       child: Builder(builder: data.builder),
@@ -198,8 +198,8 @@ class _AuroraBackground extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: isDark
-              ? const [Color(0xFF0C1F1D), Color(0xFF123330), Color(0xFF081413)]
-              : const [Color(0xFFF2FAF7), Color(0xFFE2F3EC), Color(0xFFEFF8F4)],
+              ? const [Color(0xFF14211D), Color(0xFF1B2D27), Color(0xFF111A17)]
+              : const [Color(0xFFF5F3EC), Color(0xFFF0F2E7), Color(0xFFF8F7F2)],
           stops: const [0.0, 0.55, 1.0],
         ),
       ),
@@ -237,11 +237,11 @@ class RealGlassCard extends StatelessWidget {
           colors: _useLiveBackdropBlur
               ? const [Color(0x32FFFFFF), Color(0x14FFFFFF)]
               : isDark
-                  ? const [Color(0xE61B3B35), Color(0xDF132E2A)]
-                  : const [Color(0xFCFFFFFF), Color(0xF0EAF4EF)],
+                  ? const [Color(0xFF202F2B), Color(0xFF1B2925)]
+                  : const [Color(0xFFFEFDF9), Color(0xFFF7F7F1)],
         ),
         border: Border.all(
-          color: isDark ? const Color(0x553ED9B8) : const Color(0x55749B90),
+          color: isDark ? const Color(0xFF3D5049) : const Color(0xFFDDE3D9),
         ),
         boxShadow: _useLiveBackdropBlur
             ? [
@@ -275,7 +275,7 @@ class RealGlassCard extends StatelessWidget {
   }
 }
 
-/// Persistent bottom-nav glass (kept from the original design system).
+/// Persistent bottom-nav surface shared across the app.
 class GlassPanel extends StatelessWidget {
   final Widget child;
   final double blur;
@@ -290,10 +290,10 @@ class GlassPanel extends StatelessWidget {
         color: Theme.of(context)
             .colorScheme
             .surface
-            .withOpacity(_useLiveBackdropBlur ? 0.78 : 0.97),
+            .withOpacity(_useLiveBackdropBlur ? 0.88 : 1),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: isDark ? const Color(0x553ED9B8) : const Color(0x55749B90),
+          color: isDark ? const Color(0xFF3D5049) : const Color(0xFFDDE3D9),
         ),
         boxShadow: _useLiveBackdropBlur
             ? [

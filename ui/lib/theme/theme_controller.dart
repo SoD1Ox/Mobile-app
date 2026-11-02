@@ -1,4 +1,4 @@
-/// Theme controller: dark (default) / light mint-glass variants.
+/// Theme controller: warm light workspace (default) / forest dark variant.
 ///
 /// The choice is persisted in SharedPreferences and applied via
 /// ValueListenableBuilder in main.dart, so the whole app (aurora backdrop,
@@ -21,8 +21,10 @@ class ThemeController extends ValueNotifier<ThemeMode> {
       mode = ThemeMode.light;
     } else if (saved == 'system') {
       mode = ThemeMode.system;
-    } else {
+    } else if (saved == 'dark') {
       mode = ThemeMode.dark;
+    } else {
+      mode = ThemeMode.light;
     }
     return ThemeController._(mode);
   }

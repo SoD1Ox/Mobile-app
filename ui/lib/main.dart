@@ -4,7 +4,7 @@
 ///  * load saved JWT tokens on start and restore the session via /auth/me;
 ///  * switch between LoginScreen and the authenticated app shell;
 ///  * expose AppScope (ApiClient + current user) to the whole widget tree;
-///  * global glass Material-3 theme + the app-wide liquid-glass backdrop
+///  * global Material-3 theme + the app-wide lightweight visual backdrop
 ///    stack (GlassRoot) shared by every screen.
 library;
 
@@ -98,9 +98,8 @@ class _StaffingAgencyAppState extends State<StaffingAgencyApp> {
         theme: buildGlassTheme(brightness: Brightness.light),
         darkTheme: buildGlassTheme(brightness: Brightness.dark),
         home: _user == null ? const LoginScreen() : const HomeScreen(),
-        // One app-wide backdrop: aurora gradient at the bottom, page tree in
-        // the middle, a frosted overlay strip on top that the current screen
-        // fills via FrostedHeader. Mobile uses a flat tinted surface for speed.
+        // One app-wide gradient behind the page tree. Mobile uses flat,
+        // opaque surfaces for speed and contrast.
         // screens never re-wrap the background themselves.
         // Keep app state above the Navigator. Routes opened with push() are
         // siblings of `home`, so a provider nested inside `home` is invisible

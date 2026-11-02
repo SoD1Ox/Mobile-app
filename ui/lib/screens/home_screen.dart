@@ -424,40 +424,75 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(user.canManage ? 'Обзор команды' : 'Мой обзор',
                 style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 7),
-            // -------- greeting card
-            RealGlassCard(
-              margin: EdgeInsets.zero,
+            // High contrast role banner: the greeting stays readable at a glance.
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF203A30)
+                    : const Color(0xFF245944),
+                borderRadius: BorderRadius.circular(22),
+                border:
+                    Border.all(color: const Color(0xFFB8E76A).withOpacity(.44)),
+              ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: kAccentColor.withOpacity(0.35),
-                    child: Text(user.fullName.characters.first.toUpperCase(),
-                        style: const TextStyle(fontSize: 24)),
-                  ),
-                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('$greeting, ${user.fullName}!',
+                        Text(
+                            user.canManage
+                                ? 'РАБОЧЕЕ ПРОСТРАНСТВО'
+                                : 'МОЙ КАБИНЕТ',
+                            style: const TextStyle(
+                                color: Color(0xFFB8E76A),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.1)),
+                        const SizedBox(height: 7),
+                        Text('$greeting, ${user.fullName}',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleLarge),
-                        const SizedBox(height: 4),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 21,
+                                height: 1.12,
+                                fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 7),
                         Text('@${user.username} · ${user.email}',
-                            style: TextStyle(
-                                color: appTextColor(context, opacity: 0.78))),
-                        const SizedBox(height: 6),
-                        StatusChip(
-                            label: user.roleLabel,
-                            color: user.isAdmin
-                                ? Colors.purple
-                                : user.isManager
-                                    ? Colors.blue
-                                    : Colors.teal),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Color(0xFFD1DDD3), fontSize: 12)),
+                        const SizedBox(height: 11),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border:
+                                Border.all(color: Colors.white.withOpacity(.2)),
+                          ),
+                          child: Text(user.roleLabel,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700)),
+                        ),
                       ],
                     ),
+                  ),
+                  const SizedBox(width: 12),
+                  CircleAvatar(
+                    radius: 25,
+                    backgroundColor: const Color(0xFFB8E76A),
+                    child: Text(user.fullName.characters.first.toUpperCase(),
+                        style: const TextStyle(
+                            color: Color(0xFF193B2D),
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800)),
                   ),
                 ],
               ),

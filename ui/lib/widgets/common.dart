@@ -203,17 +203,17 @@ Widget _glassDecorated(BuildContext context,
             ? const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xE61B3B35), Color(0xDF132E2A)],
+                colors: [Color(0xFF202F2B), Color(0xFF1B2925)],
               )
             : const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFCFFFFFF), Color(0xF0EAF4EF)],
+                colors: [Color(0xFFFEFDF9), Color(0xFFF7F7F1)],
               ),
         border: Border.all(
           color: Theme.of(context).brightness == Brightness.dark
-              ? const Color(0x553ED9B8)
-              : const Color(0x55749B90),
+              ? const Color(0xFF3D5049)
+              : const Color(0xFFDDE3D9),
         ),
       ),
       child: Material(
