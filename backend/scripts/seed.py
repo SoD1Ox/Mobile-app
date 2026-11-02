@@ -13,7 +13,7 @@ Idempotent-ish: refuses to run on a non-empty ``users`` table unless ``--force``
 
 Usage::
 
-    cd backend && python -m scripts.seed [--force]
+    cd backend && python -m scripts.seed [--force] [--refresh-demo-salaries]
 """
 
 from __future__ import annotations
@@ -94,6 +94,38 @@ POSITIONS = [
     ("Android-разработчик", ["Kotlin", "Android", "Git"]),
 ]
 
+# Monthly gross salary ranges in rubles for the demo vacancies. The old seed
+# generated 400k–3.4m ₽ for every role, including entry-level office jobs.
+SALARY_RANGES = {
+    "Python-разработчик": (150_000, 260_000),
+    "Frontend-разработчик": (130_000, 230_000),
+    "Backend-разработчик": (140_000, 250_000),
+    "QA-инженер": (90_000, 160_000),
+    "Data-аналитик": (110_000, 190_000),
+    "DevOps-инженер": (170_000, 300_000),
+    "Менеджер по продажам": (70_000, 150_000),
+    "Бухгалтер": (75_000, 140_000),
+    "Инженер-проектировщик": (85_000, 160_000),
+    "Водитель-экспедитор": (70_000, 125_000),
+    "Оператор станка ЧПУ": (75_000, 140_000),
+    "Медицинская сестра": (65_000, 110_000),
+    "Кладовщик": (55_000, 95_000),
+    "HR-специалист": (75_000, 140_000),
+    "iOS-разработчик": (160_000, 280_000),
+    "Android-разработчик": (140_000, 260_000),
+}
+
+
+def salary_for_demo(title: str, city: str | None = None) -> tuple[Decimal, Decimal]:
+    """Return a plausible monthly salary band for a demo role and location."""
+    low, high = SALARY_RANGES.get(title, (70_000, 150_000))
+    amount = random.randrange(low // 10_000, high // 10_000 + 1) * 10_000
+    # Add a modest regional adjustment while keeping the values easy to read.
+    factor = 1.15 if city == "Москва" else 1.08 if city == "Санкт-Петербург" else 1.0
+    salary_from = Decimal(round(amount * factor / 10_000) * 10_000)
+    spread = Decimal(random.randrange(20_000, 61_000, 10_000))
+    return salary_from, salary_from + spread
+
 CITIES = ["Москва", "Санкт-Петербург", "Казань", "Екатеринбург", "Новосибирск",
           "Краснодар", "Самара", "Уфа", "Нижний Новгород", "Челябинск"]
 
@@ -116,8 +148,27 @@ COMMENT_TEXTS = [
 ]
 
 
-def main(force: bool = False) -> None:
+def main(force: bool = False, refresh_demo_salaries: bool = False) -> None:
     factory = get_session_factory()
+
+    if refresh_demo_salaries:
+        # Adjust only generated records (the seed appends " #<number>" to the
+        # role title); manually created vacancies are left untouched.
+        import re
+
+        with Vis(factory) as session:
+            rows = session.scalars(select(Vacancy)).all()
+            updated = 0
+            for vacancy in rows:
+                match = re.fullmatch(r"(.+) #\d+", vacancy.title)
+                if match and match.group(1) in SALARY_RANGES:
+                    vacancy.salary_from, vacancy.salary_to = salary_for_demo(
+                        match.group(1), vacancy.city
+                    )
+                    updated += 1
+        print(f"Updated salaries on {updated} generated vacancies.")
+        if not force:
+            return
 
     # --- Self-healing bootstrap -------------------------------------------
     # If the schema is missing (user forgot `alembic upgrade head`), create
@@ -200,9 +251,8 @@ def main(force: bool = False) -> None:
                 if table in existing:
                     session.execute(text(f"DELETE FROM {table}"))
             session.commit()
-            # Reset PK sequences so fresh inserts don't collide with old
-            # auto-increment counters (PostgreSQL only; SQLite uses
-            # sqlite_sequence which DELETE already frees).
+            # Reset PostgreSQL PK sequences so fresh inserts don't collide
+            # with old auto-increment counters.
             bind = session.get_bind()
             if bind.dialect.name == "postgresql":
                 for table in ("applications", "comments", "candidates",
@@ -263,14 +313,15 @@ def main(force: bool = False) -> None:
     with Vis(factory) as session:
         for n in range(120):
             title, req_skills = random.choice(POSITIONS)
-            salary_from = Decimal(random.randrange(40, 350, 10) * 10000)
+            city = random.choice(CITIES)
+            salary_from, salary_to = salary_for_demo(title, city)
             vacancy = Vacancy(
                 title=f"{title} #{n+1}",
                 description=f"Требуется {title.lower()} в компанию. Проект №{n+1}, "
                             f"оформление по ТК РФ, ДМС, гибридный график.",
                 salary_from=salary_from,
-                salary_to=salary_from + Decimal(random.randrange(3, 20, 1) * 10000),
-                city=random.choice(CITIES),
+                salary_to=salary_to,
+                city=city,
                 remote=random.random() < 0.3,
                 company_id=random.choice(company_ids),
             )
@@ -356,4 +407,7 @@ def main(force: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    main(force="--force" in sys.argv)
+    main(
+        force="--force" in sys.argv,
+        refresh_demo_salaries="--refresh-demo-salaries" in sys.argv,
+    )

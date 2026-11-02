@@ -7,8 +7,6 @@
 ///   worker  — Главная · Мои кейсы (назначенные отклики) · Вакансии.
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
@@ -62,34 +60,48 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Runs one stats query and patches only its own tile + loading flag.
-  Future<void> _stat(String path, Map<String, dynamic> params,
-      void Function(int?) apply, void Function(bool) setLoading) async {
+  Future<void> _stat(
+      String path,
+      Map<String, dynamic> params,
+      void Function(int?) apply,
+      void Function(bool) setLoading,
+      List<Object> failures) async {
     try {
-      final raw = await AppScope.of(context).api.get(path, params);
+      final raw = await AppScope.read(context).api.get(path, params);
       final map = raw as Map?;
       var total = map?['total'];
       // Fallback: if the endpoint has no `total` (older backend), count items.
       if (total == null && map != null && map['items'] is List) {
         total = (map['items'] as List).length;
       }
-      if (!mounted) return;
-      setState(() {
-        apply(total is int ? total : int.tryParse('${total ?? ''}'));
-        setLoading(false);
-      });
-    } catch (_) {
-      // A failed query shows "—" instead of an endless spinner.
-      if (!mounted) return;
-      setState(() {
-        apply(null);
-        setLoading(false);
-      });
+      if (mounted) {
+        setState(
+            () => apply(total is int ? total : int.tryParse('${total ?? ''}')));
+      }
+    } catch (e) {
+      // Leave a visible error on the dashboard instead of silently replacing
+      // failed requests with a dash.
+      failures.add(e);
+      if (mounted) setState(() => apply(null));
+    } finally {
+      if (mounted) setState(() => setLoading(false));
     }
   }
 
   Future<void> _loadStats() async {
-    final user = AppScope.of(context).user;
-    if (user == null) return;
+    final user = AppScope.read(context).user;
+    if (user == null) {
+      if (mounted) {
+        setState(() {
+          _loadingVacancies = false;
+          _loadingCandidates = false;
+          _loadingNewApps = false;
+          _loadingHired = false;
+          _loadingMine = false;
+        });
+      }
+      return;
+    }
     setState(() {
       _loadingVacancies = true;
       _loadingCandidates = user.canManage;
@@ -101,22 +113,25 @@ class _HomeScreenState extends State<HomeScreen> {
         _newAppCount = null;
       }
     });
-    unawaited(_stat('/vacancies', {'page_size': 1}, (v) => _vacancyCount = v,
-        (b) => _loadingVacancies = b));
-    unawaited(_stat('/applications', {'page_size': 1, 'mine': true},
-        (v) => _myCaseCount = v, (b) => _loadingMine = b));
+    final failures = <Object>[];
+    final requests = <Future<void>>[];
+    requests.add(_stat('/vacancies', {'page_size': 1}, (v) => _vacancyCount = v,
+        (b) => _loadingVacancies = b, failures));
+    requests.add(_stat('/applications', {'page_size': 1, 'mine': true},
+        (v) => _myCaseCount = v, (b) => _loadingMine = b, failures));
     // Hired tile: a worker's scoped list can legitimately be empty, so for
     // them we count their own cases that reached "hired" via the items array.
-    unawaited(_stat(
-        '/applications',
-        {'page_size': 200, 'status': 'hired'},
-        (v) => _hiredCount = v,
-        (b) => _loadingHired = b));
+    requests.add(_stat('/applications', {'page_size': 200, 'status': 'hired'},
+        (v) => _hiredCount = v, (b) => _loadingHired = b, failures));
     if (user.canManage) {
-      unawaited(_stat('/candidates', {'page_size': 1},
-          (v) => _candidateCount = v, (b) => _loadingCandidates = b));
-      unawaited(_stat('/applications', {'page_size': 1, 'status': 'new'},
-          (v) => _newAppCount = v, (b) => _loadingNewApps = b));
+      requests.add(_stat('/candidates', {'page_size': 1},
+          (v) => _candidateCount = v, (b) => _loadingCandidates = b, failures));
+      requests.add(_stat('/applications', {'page_size': 1, 'status': 'new'},
+          (v) => _newAppCount = v, (b) => _loadingNewApps = b, failures));
+    }
+    await Future.wait(requests);
+    if (mounted && failures.isNotEmpty) {
+      showError(context, failures.first);
     }
   }
 
@@ -190,16 +205,14 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Кадровое агентство'),
         actions: [
-          GlassIconButton(Glyph.logout,
-              tooltip: 'Выйти',
-              onPressed: () async {
-                final yes = await confirmDialog(context, 'Выйти?',
-                    'Сессия будет завершена.',
-                    okLabel: 'Выйти');
-                if (!yes || !context.mounted) return;
-                await scope.api.clearTokens();
-                scope.onSignedOut();
-              }),
+          GlassIconButton(Glyph.logout, tooltip: 'Выйти', onPressed: () async {
+            final yes = await confirmDialog(
+                context, 'Выйти?', 'Сессия будет завершена.',
+                okLabel: 'Выйти');
+            if (!yes || !context.mounted) return;
+            await scope.api.clearTokens();
+            scope.onSignedOut();
+          }),
         ],
       ),
       body: RefreshIndicator(
@@ -332,7 +345,8 @@ class _HomeScreenState extends State<HomeScreen> {
               _NavCard(
                   glyph: Glyph.people,
                   title: 'Кандидаты',
-                  subtitle: 'База соискателей, заметки рекрутеров, история откликов',
+                  subtitle:
+                      'База соискателей, заметки рекрутеров, история откликов',
                   onTap: () => _openSection(2)),
             if (user.canManage)
               _NavCard(

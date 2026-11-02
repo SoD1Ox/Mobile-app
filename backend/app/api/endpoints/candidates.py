@@ -19,6 +19,7 @@ from app.api.dependencies.providers import get_candidate_service
 from app.dto.candidate import CandidateCreate, CandidateRead, CandidateUpdate
 from app.dto.comment import CommentCreate, CommentRead
 from app.dto.common import Page, PageParams
+from app.models.user import UserRole
 from app.services.candidate import CandidateService
 from app.services.errors import ConflictError, DomainError, NotFoundError
 
@@ -35,7 +36,7 @@ def _http_error(exc: DomainError) -> HTTPException:
 
 @router.get("", response_model=Page[CandidateRead], summary="Paginated candidate list")
 def list_candidates(
-    current_user: CurrentUser,
+    current_user: ManagerOrAdmin,
     service: CandidateService = Depends(get_candidate_service),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=200),
@@ -68,6 +69,11 @@ def get_candidate(
     current_user: CurrentUser,
     service: CandidateService = Depends(get_candidate_service),
 ) -> CandidateRead:
+    if (
+        current_user.role == UserRole.WORKER
+        and not service.worker_has_assigned_candidate(candidate_id, current_user.id)
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Candidate is not assigned to you")
     try:
         return service.get_candidate(candidate_id)
     except NotFoundError as exc:
@@ -126,6 +132,11 @@ def list_comments(
     current_user: CurrentUser,
     service: CandidateService = Depends(get_candidate_service),
 ) -> list[CommentRead]:
+    if (
+        current_user.role == UserRole.WORKER
+        and not service.worker_has_assigned_candidate(candidate_id, current_user.id)
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Candidate is not assigned to you")
     try:
         return service.list_comments(candidate_id)
     except NotFoundError as exc:
@@ -144,6 +155,11 @@ def add_comment(
     current_user: CurrentUser,
     service: CandidateService = Depends(get_candidate_service),
 ) -> CommentRead:
+    if (
+        current_user.role == UserRole.WORKER
+        and not service.worker_has_assigned_candidate(candidate_id, current_user.id)
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Candidate is not assigned to you")
     try:
         return service.add_comment(candidate_id, data, author_id=current_user.id)
     except NotFoundError as exc:

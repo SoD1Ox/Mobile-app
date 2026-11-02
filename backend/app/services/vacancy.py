@@ -39,11 +39,12 @@ class VacancyService:
         city: str | None = None,
         remote: bool | None = None,
         salary_min: Decimal | None = None,
+        sort: str = "newest",
         ids: list[int] | None = None,
     ) -> Page[VacancyRead]:
         return self._repo.search_paginated(
             params, company_id=company_id, city=city, remote=remote,
-            salary_min=salary_min, ids=ids,
+            salary_min=salary_min, sort=sort, ids=ids,
         )
 
     def get_vacancy(self, vacancy_id: int) -> VacancyRead:

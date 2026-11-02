@@ -114,7 +114,8 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                           final changed = await Navigator.push<bool>(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => CompanyDetailScreen(companyId: c.id)),
+                                builder: (_) =>
+                                    CompanyDetailScreen(companyId: c.id)),
                           );
                           if (changed == true) _load();
                         },
@@ -141,12 +142,15 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                            fontSize: 15.5, fontWeight: FontWeight.w700)),
+                                            fontSize: 15.5,
+                                            fontWeight: FontWeight.w700)),
                                     const SizedBox(height: 3),
                                     Text(
                                       [
-                                        if ((c.industry ?? '').isNotEmpty) c.industry!,
-                                        if ((c.address ?? '').isNotEmpty) c.address!,
+                                        if ((c.industry ?? '').isNotEmpty)
+                                          c.industry!,
+                                        if ((c.address ?? '').isNotEmpty)
+                                          c.address!,
                                       ].join(' · '),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -183,6 +187,7 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
   List<ContactItem> _contacts = [];
   int _vacancyCount = 0;
   bool _loading = true;
+  Object? _loadError;
 
   @override
   void initState() {
@@ -191,7 +196,12 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
+    }
     try {
       final api = AppScope.read(context).api;
       // Sequential requests: a single failing call must never take the whole
@@ -217,10 +227,15 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
         _contacts = contacts;
         _vacancyCount = vcount;
         _loading = false;
+        _loadError = null;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _loadError = e;
+        _company = null;
+      });
       showError(context, e);
     }
   }
@@ -229,8 +244,11 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
     final yes = await confirmDialog(
         context, 'Удалить компанию?', 'Вакансии компании станут безработными.');
     if (!yes || !mounted) return;
-    final ok = await runGuarded(context,
-        () => AppScope.read(context).api.delete('/companies/${widget.companyId}'));
+    final ok = await runGuarded(
+        context,
+        () => AppScope.read(context)
+            .api
+            .delete('/companies/${widget.companyId}'));
     if (ok && mounted) Navigator.pop(context, true);
   }
 
@@ -261,112 +279,149 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
         title: Text(c?.name ?? 'Компания'),
         actions: [
           if (c != null && canManage) ...[
-            GlassIconButton(Glyph.edit,
-                onPressed: () => _openEdit()),
-            if ((user?.isAdmin ?? false)) GlassIconButton(Glyph.delete, onPressed: _deleteCompany),
+            GlassIconButton(Glyph.edit, onPressed: () => _openEdit()),
+            if ((user?.isAdmin ?? false))
+              GlassIconButton(Glyph.delete, onPressed: _deleteCompany),
           ],
         ],
       ),
       body: _loading
           ? const LoadingView()
-          : c == null
-              ? const Center(child: Text('Компания не найдена'))
-              : ListView(
-                  padding: const EdgeInsets.all(14),
-                  children: [
-                    RealGlassCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(c.name,
-                              style: const TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 10),
-                          if ((c.industry ?? '').isNotEmpty)
-                            _row(Glyph.briefcase, c.industry!),
-                          if ((c.address ?? '').isNotEmpty) _row(Glyph.pin, c.address!),
-                          if ((c.email ?? '').isNotEmpty) _row(Glyph.mail, c.email!),
-                          if ((c.phone ?? '').isNotEmpty) _row(Glyph.phone, c.phone!),
-                          _row(Glyph.list, '$_vacancyCount вакансий'),
-                        ],
-                      ),
+          : _company == null && _loadError != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Не удалось загрузить компанию'),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: _load,
+                          icon: const GlassIcon(Glyph.refresh, size: 18),
+                          label: const Text('Повторить'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    GlassListCard(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                  ),
+                )
+              : c == null
+                  ? const Center(child: Text('Компания не найдена'))
+                  : ListView(
+                      padding: const EdgeInsets.all(14),
+                      children: [
+                        RealGlassCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(c.name,
+                                  style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 10),
+                              if ((c.industry ?? '').isNotEmpty)
+                                _row(Glyph.briefcase, c.industry!),
+                              if ((c.address ?? '').isNotEmpty)
+                                _row(Glyph.pin, c.address!),
+                              if ((c.email ?? '').isNotEmpty)
+                                _row(Glyph.mail, c.email!),
+                              if ((c.phone ?? '').isNotEmpty)
+                                _row(Glyph.phone, c.phone!),
+                              _row(Glyph.list, '$_vacancyCount вакансий'),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        GlassListCard(
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  child: Text('Контактные лица (${_contacts.length})',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w700)),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                          'Контактные лица (${_contacts.length})',
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w700)),
+                                    ),
+                                    if (canManage)
+                                      GlassIconButton(Glyph.add,
+                                          size: 20,
+                                          onPressed: () => _openContactForm()),
+                                  ],
                                 ),
-                                if (canManage)
-                                  GlassIconButton(Glyph.add,
-                                      size: 20, onPressed: () => _openContactForm()),
+                                const SizedBox(height: 8),
+                                if (_contacts.isEmpty)
+                                  Text('Контакты не добавлены',
+                                      style: TextStyle(
+                                          color: Colors.white.withOpacity(0.5)))
+                                else
+                                  for (final ct in _contacts)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 5),
+                                      child: Row(
+                                        children: [
+                                          const GlassIcon(Glyph.person,
+                                              size: 16),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(ct.fullName,
+                                                    style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600)),
+                                                if ((ct.position ?? '')
+                                                        .isNotEmpty ||
+                                                    (ct.phone ?? '')
+                                                        .isNotEmpty ||
+                                                    (ct.email ?? '').isNotEmpty)
+                                                  Text(
+                                                    [
+                                                      if ((ct.position ?? '')
+                                                          .isNotEmpty)
+                                                        ct.position!,
+                                                      if ((ct.phone ?? '')
+                                                          .isNotEmpty)
+                                                        ct.phone!,
+                                                      if ((ct.email ?? '')
+                                                          .isNotEmpty)
+                                                        ct.email!,
+                                                    ].join(' · '),
+                                                    style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.white
+                                                            .withOpacity(0.6)),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (canManage)
+                                            GlassIconButton(Glyph.edit,
+                                                size: 16,
+                                                onPressed: () =>
+                                                    _openContactForm(
+                                                        existing: ct)),
+                                          if ((user?.isAdmin ?? false))
+                                            GlassIconButton(Glyph.delete,
+                                                size: 16,
+                                                onPressed: () =>
+                                                    _deleteContact(ct)),
+                                        ],
+                                      ),
+                                    ),
                               ],
                             ),
-                            const SizedBox(height: 8),
-                            if (_contacts.isEmpty)
-                              Text('Контакты не добавлены',
-                                  style:
-                                      TextStyle(color: Colors.white.withOpacity(0.5)))
-                            else
-                              for (final ct in _contacts)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 5),
-                                  child: Row(
-                                    children: [
-                                      const GlassIcon(Glyph.person, size: 16),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(ct.fullName,
-                                                style: const
-                                                    TextStyle(fontWeight: FontWeight.w600)),
-                                            if ((ct.position ?? '').isNotEmpty ||
-                                                (ct.phone ?? '').isNotEmpty ||
-                                                (ct.email ?? '').isNotEmpty)
-                                              Text(
-                                                [
-                                                  if ((ct.position ?? '').isNotEmpty)
-                                                    ct.position!,
-                                                  if ((ct.phone ?? '').isNotEmpty) ct.phone!,
-                                                  if ((ct.email ?? '').isNotEmpty) ct.email!,
-                                                ].join(' · '),
-                                                style: TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        Colors.white.withOpacity(0.6)),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      if (canManage)
-                                        GlassIconButton(Glyph.edit,
-                                            size: 16,
-                                            onPressed: () =>
-                                                _openContactForm(existing: ct)),
-                                      if ((user?.isAdmin ?? false))
-                                        GlassIconButton(Glyph.delete,
-                                            size: 16, onPressed: () => _deleteContact(ct)),
-                                    ],
-                                  ),
-                                ),
-                          ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 24),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
     );
   }
 
@@ -406,8 +461,10 @@ class _CompanyFormDialogState extends State<_CompanyFormDialog> {
   late final _name = TextEditingController(text: widget.existing?.name ?? '');
   late final _email = TextEditingController(text: widget.existing?.email ?? '');
   late final _phone = TextEditingController(text: widget.existing?.phone ?? '');
-  late final _address = TextEditingController(text: widget.existing?.address ?? '');
-  late final _industry = TextEditingController(text: widget.existing?.industry ?? '');
+  late final _address =
+      TextEditingController(text: widget.existing?.address ?? '');
+  late final _industry =
+      TextEditingController(text: widget.existing?.industry ?? '');
   bool _saving = false;
 
   @override
@@ -446,7 +503,8 @@ class _CompanyFormDialogState extends State<_CompanyFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Новая компания' : 'Правка компании'),
+      title:
+          Text(widget.existing == null ? 'Новая компания' : 'Правка компании'),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -456,8 +514,9 @@ class _CompanyFormDialogState extends State<_CompanyFormDialog> {
               AppTextField(
                 controller: _name,
                 label: 'Название *',
-                validator: (v) =>
-                    (v == null || v.trim().length < 2) ? 'Минимум 2 символа' : null,
+                validator: (v) => (v == null || v.trim().length < 2)
+                    ? 'Минимум 2 символа'
+                    : null,
               ),
               AppTextField(controller: _industry, label: 'Отрасль'),
               AppTextField(controller: _address, label: 'Адрес'),
@@ -496,7 +555,8 @@ class _ContactFormDialogState extends State<_ContactFormDialog> {
   final _formKey = GlobalKey<FormState>();
   late final _fullName =
       TextEditingController(text: widget.existing?.fullName ?? '');
-  late final _position = TextEditingController(text: widget.existing?.position ?? '');
+  late final _position =
+      TextEditingController(text: widget.existing?.position ?? '');
   late final _phone = TextEditingController(text: widget.existing?.phone ?? '');
   late final _email = TextEditingController(text: widget.existing?.email ?? '');
   bool _saving = false;
@@ -536,7 +596,8 @@ class _ContactFormDialogState extends State<_ContactFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.existing == null ? 'Новый контакт' : 'Правка контакта'),
+      title:
+          Text(widget.existing == null ? 'Новый контакт' : 'Правка контакта'),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -546,8 +607,9 @@ class _ContactFormDialogState extends State<_ContactFormDialog> {
               AppTextField(
                 controller: _fullName,
                 label: 'ФИО *',
-                validator: (v) =>
-                    (v == null || v.trim().length < 2) ? 'Минимум 2 символа' : null,
+                validator: (v) => (v == null || v.trim().length < 2)
+                    ? 'Минимум 2 символа'
+                    : null,
               ),
               AppTextField(controller: _position, label: 'Должность'),
               AppTextField(controller: _phone, label: 'Телефон'),

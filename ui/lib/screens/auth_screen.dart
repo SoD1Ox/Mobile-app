@@ -52,71 +52,77 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GlassIcon(Glyph.folder,
-                      size: 72, color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(height: 12),
-                  Text('Кадровое агентство',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 4),
-                  Text('Вход в систему подбора персонала',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium),
-                  const SizedBox(height: 32),
-                  TextFormField(
-                    controller: _username,
-                    decoration: InputDecoration(
-                        labelText: 'Имя пользователя',
-                        prefixIcon: GlassIcon(Glyph.person, size: 20)),
-                    validator: (v) =>
-                        (v == null || v.trim().length < 3) ? 'Минимум 3 символа' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _password,
-                    obscureText: _obscure,
-                    decoration: InputDecoration(
-                      labelText: 'Пароль',
-                      prefixIcon: GlassIcon(Glyph.lock, size: 20),
-                      suffixIcon: GlassIconButton(
-                        _obscure ? Glyph.eyeOff : Glyph.eye,
-                        size: 20,
-                        onPressed: () => setState(() => _obscure = !_obscure),
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      GlassIcon(Glyph.folder,
+                          size: 72,
+                          color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(height: 12),
+                      Text('Кадровое агентство',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineMedium),
+                      const SizedBox(height: 4),
+                      Text('Вход в систему подбора персонала',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium),
+                      const SizedBox(height: 32),
+                      TextFormField(
+                        controller: _username,
+                        decoration: InputDecoration(
+                            labelText: 'Имя пользователя',
+                            prefixIcon: GlassIcon(Glyph.person, size: 20)),
+                        validator: (v) => (v == null || v.trim().length < 3)
+                            ? 'Минимум 3 символа'
+                            : null,
                       ),
-                    ),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Введите пароль' : null,
-                    onFieldSubmitted: (_) => _login(),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _password,
+                        obscureText: _obscure,
+                        decoration: InputDecoration(
+                          labelText: 'Пароль',
+                          prefixIcon: GlassIcon(Glyph.lock, size: 20),
+                          suffixIcon: GlassIconButton(
+                            _obscure ? Glyph.eyeOff : Glyph.eye,
+                            size: 20,
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
+                          ),
+                        ),
+                        validator: (v) =>
+                            (v == null || v.isEmpty) ? 'Введите пароль' : null,
+                        onFieldSubmitted: (_) => _login(),
+                      ),
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        onPressed: _busy ? null : _login,
+                        child: _busy
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('Войти'),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        onPressed: _busy
+                            ? null
+                            : () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) => const RegisterScreen())),
+                        child: const Text('Регистрация'),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                          'Демо-доступы: admin/admin123,\nmanager/manager123, worker/worker123',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _busy ? null : _login,
-                    child: _busy
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('Войти'),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: _busy
-                        ? null
-                        : () => Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => const RegisterScreen())),
-                    child: const Text('Регистрация'),
-                  ),
-                  const SizedBox(height: 24),
-                  Text('Демо-доступы: admin/admin123,\nmanager/manager123, worker/worker123',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall),
-                ],
-              ),
                 ),
               ),
             ),
@@ -185,64 +191,81 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(
-                      controller: _username,
-                      decoration: const InputDecoration(labelText: 'Логин')),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                      controller: _email,
-                      decoration: const InputDecoration(labelText: 'Email')),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                      controller: _fullName,
-                      decoration:
-                          const InputDecoration(labelText: 'ФИО')),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _password,
-                    obscureText: true,
-                    decoration:
-                        const InputDecoration(labelText: 'Пароль (мин. 6 символов)'),
-                    validator: (v) => (v == null || v.length < 6)
-                        ? 'Минимум 6 символов'
-                        : null,
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextFormField(
+                          controller: _username,
+                          decoration: const InputDecoration(labelText: 'Логин'),
+                          validator: (v) {
+                            final username = v?.trim() ?? '';
+                            return RegExp(r'^[a-zA-Z0-9_.-]{3,50}$')
+                                    .hasMatch(username)
+                                ? null
+                                : 'Используйте 3–50 латинских букв, цифр, точек, дефисов или подчёркиваний';
+                          }),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                          controller: _email,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(labelText: 'Email'),
+                          validator: (v) {
+                            final email = v?.trim() ?? '';
+                            return email.contains('@') && email.contains('.')
+                                ? null
+                                : 'Введите корректный email';
+                          }),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                          controller: _fullName,
+                          decoration: const InputDecoration(labelText: 'ФИО'),
+                          validator: (v) => (v == null || v.trim().length < 2)
+                              ? 'Укажите имя (минимум 2 символа)'
+                              : null),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _password,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                            labelText: 'Пароль (мин. 6 символов)'),
+                        validator: (v) => (v == null || v.length < 6)
+                            ? 'Минимум 6 символов'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _password2,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                            labelText: 'Повторите пароль'),
+                        validator: (v) =>
+                            v != _password.text ? 'Пароли не совпадают' : null,
+                      ),
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        onPressed: _busy ? null : _register,
+                        child: _busy
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('Зарегистрироваться'),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GlassIcon(Glyph.back, size: 18),
+                              SizedBox(width: 6),
+                              Text('Назад к входу'),
+                            ],
+                          )),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _password2,
-                    obscureText: true,
-                    decoration:
-                        const InputDecoration(labelText: 'Повторите пароль'),
-                    validator: (v) =>
-                        v != _password.text ? 'Пароли не совпадают' : null,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _busy ? null : _register,
-                    child: _busy
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('Зарегистрироваться'),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GlassIcon(Glyph.back, size: 18),
-                          SizedBox(width: 6),
-                          Text('Назад к входу'),
-                        ],
-                      )),
-                ],
-              ),
                 ),
               ),
             ),

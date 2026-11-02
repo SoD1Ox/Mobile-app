@@ -99,24 +99,26 @@ class _StaffingAgencyAppState extends State<StaffingAgencyApp> {
         darkTheme: buildGlassTheme(brightness: Brightness.dark),
         home: ListenableBuilder(
           listenable: _notifications,
-          builder: (_, __) => AppScope(
-            api: _api,
-            user: _user,
-            theme: _theme!,
-            notifications: _notifications,
-            onSignedOut: _signedOut,
-            onUserUpdated: _signedIn,
-            child: _user == null
-                ? const LoginScreen()
-                : const HomeScreen(),
-          ),
+          builder: (_, __) =>
+              _user == null ? const LoginScreen() : const HomeScreen(),
         ),
         // One app-wide backdrop: aurora gradient at the bottom, page tree in
         // the middle, a single live-blur frosted overlay strip on top that the
         // current screen fills via FrostedHeader. Painted once per frame —
         // screens never re-wrap the background themselves.
-        builder: (context, child) => GlassRoot(
-          child: SafeArea(child: child ?? const SizedBox()),
+        // Keep app state above the Navigator. Routes opened with push() are
+        // siblings of `home`, so a provider nested inside `home` is invisible
+        // to registration, company, vacancy, and other detail screens.
+        builder: (context, child) => AppScope(
+          api: _api,
+          user: _user,
+          theme: _theme!,
+          notifications: _notifications,
+          onSignedOut: _signedOut,
+          onUserUpdated: _signedIn,
+          child: GlassRoot(
+            child: SafeArea(child: child ?? const SizedBox()),
+          ),
         ),
       ),
     );

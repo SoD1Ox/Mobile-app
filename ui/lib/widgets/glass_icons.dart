@@ -36,6 +36,8 @@ enum Glyph {
   search,
   send,
   server,
+  star,
+  starFilled,
   task,
   folder,
   building,
@@ -50,13 +52,13 @@ class GlassIcon extends StatelessWidget {
   final double size;
   final Color? color;
 
-  const GlassIcon(this.glyph,
-      {super.key, this.size = 22, this.color});
+  const GlassIcon(this.glyph, {super.key, this.size = 22, this.color});
 
   @override
   Widget build(BuildContext context) => CustomPaint(
         size: Size.square(size),
-        painter: _GlyphPainter(glyph, color ?? Theme.of(context).iconTheme.color ?? Colors.white),
+        painter: _GlyphPainter(
+            glyph, color ?? Theme.of(context).iconTheme.color ?? Colors.white),
       );
 }
 
@@ -122,8 +124,10 @@ class _GlyphPainter extends CustomPainter {
           p.quadraticBezierTo(14.7, 3.8, 14.7, 4.8);
           p.lineTo(14.7, 7);
         });
-        _line(canvas, stroke, const Offset(10.2, 10.5), const Offset(10.5, 17.5));
-        _line(canvas, stroke, const Offset(13.8, 10.5), const Offset(13.5, 17.5));
+        _line(
+            canvas, stroke, const Offset(10.2, 10.5), const Offset(10.5, 17.5));
+        _line(
+            canvas, stroke, const Offset(13.8, 10.5), const Offset(13.5, 17.5));
       case Glyph.edit:
         _path(canvas, stroke, (p) {
           p.moveTo(4.5, 19.5);
@@ -246,8 +250,7 @@ class _GlyphPainter extends CustomPainter {
         });
       case Glyph.refresh:
         _path(canvas, stroke, (p) {
-          p.addArc(
-              Rect.fromLTWH(4.5, 4.5, 15, 15), -1.9, 4.4); // open arc ring
+          p.addArc(Rect.fromLTWH(4.5, 4.5, 15, 15), -1.9, 4.4); // open arc ring
         });
         _path(canvas, stroke, (p) {
           p.moveTo(18.6, 3.6);
@@ -297,12 +300,14 @@ class _GlyphPainter extends CustomPainter {
         });
         _path(canvas, stroke, (p) {
           p.addRRect(RRect.fromRectAndRadius(
-              const Rect.fromLTWH(3.5, 13.5, 17, 6.5), const Radius.circular(2)));
+              const Rect.fromLTWH(3.5, 13.5, 17, 6.5),
+              const Radius.circular(2)));
         });
         canvas.drawCircle(const Offset(7.2, 7.2), 0.9, fill);
         canvas.drawCircle(const Offset(7.2, 16.7), 0.9, fill);
         _line(canvas, stroke, const Offset(14.5, 7.2), const Offset(17.5, 7.2));
-        _line(canvas, stroke, const Offset(14.5, 16.7), const Offset(17.5, 16.7));
+        _line(
+            canvas, stroke, const Offset(14.5, 16.7), const Offset(17.5, 16.7));
       case Glyph.task:
         _path(canvas, stroke, (p) {
           p.addRRect(RRect.fromRectAndRadius(
@@ -346,15 +351,18 @@ class _GlyphPainter extends CustomPainter {
       case Glyph.dashboard:
         _path(canvas, stroke, (p) {
           p.addRRect(RRect.fromRectAndRadius(
-              const Rect.fromLTWH(3.5, 3.5, 7.5, 7.5), const Radius.circular(2)));
+              const Rect.fromLTWH(3.5, 3.5, 7.5, 7.5),
+              const Radius.circular(2)));
         });
         _path(canvas, stroke, (p) {
           p.addRRect(RRect.fromRectAndRadius(
-              const Rect.fromLTWH(13, 3.5, 7.5, 7.5), const Radius.circular(2)));
+              const Rect.fromLTWH(13, 3.5, 7.5, 7.5),
+              const Radius.circular(2)));
         });
         _path(canvas, stroke, (p) {
           p.addRRect(RRect.fromRectAndRadius(
-              const Rect.fromLTWH(3.5, 13, 7.5, 7.5), const Radius.circular(2)));
+              const Rect.fromLTWH(3.5, 13, 7.5, 7.5),
+              const Radius.circular(2)));
         });
         _path(canvas, stroke, (p) {
           p.addRRect(RRect.fromRectAndRadius(
@@ -372,10 +380,39 @@ class _GlyphPainter extends CustomPainter {
         canvas.drawCircle(const Offset(4.6, 6), 1.3, fill);
         canvas.drawCircle(const Offset(4.6, 12), 1.3, fill);
         canvas.drawCircle(const Offset(4.6, 18), 1.3, fill);
+      case Glyph.star:
+        _path(canvas, stroke, (p) {
+          p.moveTo(12, 3.5);
+          p.lineTo(14.6, 8.8);
+          p.lineTo(20.5, 9.6);
+          p.lineTo(16.2, 13.7);
+          p.lineTo(17.2, 19.8);
+          p.lineTo(12, 16.9);
+          p.lineTo(6.8, 19.8);
+          p.lineTo(7.8, 13.7);
+          p.lineTo(3.5, 9.6);
+          p.lineTo(9.4, 8.8);
+          p.close();
+        });
+      case Glyph.starFilled:
+        _path(canvas, fill, (p) {
+          p.moveTo(12, 3.5);
+          p.lineTo(14.6, 8.8);
+          p.lineTo(20.5, 9.6);
+          p.lineTo(16.2, 13.7);
+          p.lineTo(17.2, 19.8);
+          p.lineTo(12, 16.9);
+          p.lineTo(6.8, 19.8);
+          p.lineTo(7.8, 13.7);
+          p.lineTo(3.5, 9.6);
+          p.lineTo(9.4, 8.8);
+          p.close();
+        });
       case Glyph.briefcase:
         _path(canvas, stroke, (p) {
           p.addRRect(RRect.fromRectAndRadius(
-              const Rect.fromLTWH(3.5, 7.5, 17, 12.5), const Radius.circular(2)));
+              const Rect.fromLTWH(3.5, 7.5, 17, 12.5),
+              const Radius.circular(2)));
         });
         _path(canvas, stroke, (p) {
           p.moveTo(9, 7.5);
@@ -385,7 +422,8 @@ class _GlyphPainter extends CustomPainter {
           p.quadraticBezierTo(15, 3.5, 15, 5.2);
           p.lineTo(15, 7.5);
         });
-        _line(canvas, stroke, const Offset(3.5, 12.5), const Offset(20.5, 12.5));
+        _line(
+            canvas, stroke, const Offset(3.5, 12.5), const Offset(20.5, 12.5));
         _path(canvas, stroke, (p) {
           p.moveTo(10.8, 12.5);
           p.lineTo(10.8, 14.6);
@@ -406,14 +444,16 @@ class _GlyphPainter extends CustomPainter {
           p.quadraticBezierTo(13.6, 12, 12.2, 12);
           p.lineTo(10.7, 12);
         });
-        _line(canvas, stroke, const Offset(9.6, 14.2), const Offset(13.2, 14.2));
+        _line(
+            canvas, stroke, const Offset(9.6, 14.2), const Offset(13.2, 14.2));
       case Glyph.kanban:
         _path(canvas, stroke, (p) {
           p.addRRect(RRect.fromRectAndRadius(
               const Rect.fromLTWH(3.5, 3.5, 17, 17), const Radius.circular(2)));
         });
         _line(canvas, stroke, const Offset(9.2, 3.5), const Offset(9.2, 20.5));
-        _line(canvas, stroke, const Offset(14.8, 3.5), const Offset(14.8, 20.5));
+        _line(
+            canvas, stroke, const Offset(14.8, 3.5), const Offset(14.8, 20.5));
         _line(canvas, stroke, const Offset(5.4, 8), const Offset(7.3, 8));
         _line(canvas, stroke, const Offset(11, 8), const Offset(13, 8));
         _line(canvas, stroke, const Offset(11, 12.5), const Offset(13, 12.5));

@@ -6,6 +6,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
@@ -26,6 +27,8 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
+  static const Duration _requestTimeout = Duration(seconds: 12);
+
   /// Backend base URL.  Android emulator reaches the host machine via
   /// 10.0.2.2; a physical Android device must be pointed at the PC's LAN IP
   /// with --dart-define=API_BASE_URL=http://192.168.x.x:8000/api/v1.
@@ -101,12 +104,10 @@ class ApiClient {
       final detail = body is Map ? body['detail'] : null;
       if (detail is String) return detail;
       if (detail is List) {
-        return detail
-            .map((e) {
-              final loc = (e['loc'] as List?)?.skip(1).join('.') ?? '';
-              return '$loc: ${e['msg']}';
-            })
-            .join('; ');
+        return detail.map((e) {
+          final loc = (e['loc'] as List?)?.skip(1).join('.') ?? '';
+          return '$loc: ${e['msg']}';
+        }).join('; ');
       }
       return 'Ошибка ${res.statusCode}';
     } catch (_) {
@@ -117,38 +118,55 @@ class ApiClient {
   Future<dynamic> _handle(http.Response res) async {
     if (res.statusCode >= 200 && res.statusCode < 300) {
       if (res.body.isEmpty) return null;
-      return jsonDecode(utf8.decode(res.bodyBytes));
+      try {
+        return jsonDecode(utf8.decode(res.bodyBytes));
+      } on FormatException {
+        throw ApiException.client('Сервер вернул некорректный ответ.');
+      }
     }
     throw ApiException(res.statusCode, _extractError(res));
   }
 
+  /// Put a hard upper bound on every network operation. Without it, a stopped
+  /// or unreachable backend leaves the dashboard and forms in a spinner state.
+  Future<http.Response> _sendWithTimeout(
+      Future<http.Response> Function() send) async {
+    try {
+      return await send().timeout(_requestTimeout);
+    } on TimeoutException {
+      throw ApiException.client(
+          'Сервер не ответил за 12 секунд. Проверьте, запущен ли API.');
+    } on http.ClientException catch (e) {
+      throw ApiException.client(
+          'Не удалось подключиться к API. Запустите сервер и проверьте адрес. ($e)');
+    }
+  }
+
   /// Sends a request; on 401 silently refreshes the access token once
   /// (using the stored refresh token) and replays the original request.
-  Future<dynamic> _request(String method, Uri url,
-      [String? body]) async {
+  Future<dynamic> _request(String method, Uri url, [String? body]) async {
     Future<http.Response> send() async {
-      final req = http.Request(method, url)
-        ..headers.addAll(_headers);
+      final req = http.Request(method, url)..headers.addAll(_headers);
       if (body != null) req.body = body;
       return http.Response.fromStream(await req.send());
     }
 
-    var res = await send();
+    var res = await _sendWithTimeout(send);
     if (res.statusCode == 401 && _refreshToken != null) {
-      if (await _tryRefresh()) res = await send();
+      if (await _tryRefresh()) res = await _sendWithTimeout(send);
     }
     return _handle(res);
   }
 
   Future<bool> _tryRefresh() async {
     try {
-      final res = await http.post(_u('/auth/refresh'),
+      final res = await _sendWithTimeout(() => http.post(_u('/auth/refresh'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'refresh_token': _refreshToken}));
+          body: jsonEncode({'refresh_token': _refreshToken})));
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
-        await _saveTokens(data['access_token'],
-            data['refresh_token'] ?? _refreshToken!);
+        await _saveTokens(
+            data['access_token'], data['refresh_token'] ?? _refreshToken!);
         return true;
       }
     } catch (_) {
@@ -164,27 +182,27 @@ class ApiClient {
     required String fullName,
     required String password,
   }) async {
-    final res = await http.post(
-      _u('/auth/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username,
-        'email': email,
-        'full_name': fullName,
-        'password': password,
-        'role': 'worker',
-        'is_active': true,
-      }),
-    );
+    final res = await _sendWithTimeout(() => http.post(
+          _u('/auth/register'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'username': username,
+            'email': email,
+            'full_name': fullName,
+            'password': password,
+            'role': 'worker',
+            'is_active': true,
+          }),
+        ));
     await _handle(res);
   }
 
   Future<void> login(String username, String password) async {
-    final res = await http.post(
-      _u('/auth/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'username': username, 'password': password}),
-    );
+    final res = await _sendWithTimeout(() => http.post(
+          _u('/auth/login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'username': username, 'password': password}),
+        ));
     final data = await _handle(res) as Map<String, dynamic>;
     await _saveTokens(data['access_token'], data['refresh_token']);
   }

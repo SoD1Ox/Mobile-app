@@ -22,21 +22,19 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Idempotent bootstrap for PostgreSQL: the user's local DB may contain a
-    # partial or legacy (Task Manager) schema created before alembic was
-    # used. Drop all known tables IF EXISTS so this migration can run on any
-    # state. SQLite (used only for sandbox tests) has no DROP TYPE / CASCADE,
-    # so guard by dialect name.
+    # This project is PostgreSQL-only. Fail explicitly instead of silently
+    # creating a partial schema on another SQL dialect.
     bind = op.get_bind()
-    if bind.dialect.name == "postgresql":
-        for legacy in ("projects", "tasks", "task_tags", "tags", "clients"):
-            op.execute(f'DROP TABLE IF EXISTS "{legacy}" CASCADE')
-        for table in ("comments", "applications", "candidates",
-                      "vacancy_skills", "vacancies", "contacts", "companies",
-                      "skills", "users"):
-            op.execute(f'DROP TABLE IF EXISTS "{table}" CASCADE')
-        op.execute('DROP TYPE IF EXISTS user_role')
-        op.execute('DROP TYPE IF EXISTS application_status')
+    if bind.dialect.name != "postgresql":
+        raise RuntimeError("This application requires PostgreSQL.")
+    for legacy in ("projects", "tasks", "task_tags", "tags", "clients"):
+        op.execute(f'DROP TABLE IF EXISTS "{legacy}" CASCADE')
+    for table in ("comments", "applications", "candidates",
+                  "vacancy_skills", "vacancies", "contacts", "companies",
+                  "skills", "users"):
+        op.execute(f'DROP TABLE IF EXISTS "{table}" CASCADE')
+    op.execute('DROP TYPE IF EXISTS user_role')
+    op.execute('DROP TYPE IF EXISTS application_status')
 
     # --- users -------------------------------------------------------------
     op.create_table(

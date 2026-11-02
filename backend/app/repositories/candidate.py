@@ -10,6 +10,7 @@ from app.db.vis import Vis
 from app.dto.candidate import CandidateCreate, CandidateRead, CandidateUpdate
 from app.dto.common import Page, PageParams
 from app.models.candidate import Candidate
+from app.models.application import Application
 from app.repositories.base import BaseRepository
 
 
@@ -71,3 +72,15 @@ class CandidateRepository(BaseRepository[Candidate, CandidateRead, CandidateCrea
         with Vis(self._factory) as session:
             obj = session.scalar(select(Candidate).where(Candidate.email == email))
             return self._to_read(obj)
+
+    def has_assigned_application(self, candidate_id: int, worker_id: int) -> bool:
+        """Check whether a worker may access a candidate through an assigned case."""
+        with Vis(self._factory) as session:
+            return session.scalar(
+                select(Application.id)
+                .where(
+                    Application.candidate_id == candidate_id,
+                    Application.assigned_worker_id == worker_id,
+                )
+                .limit(1)
+            ) is not None

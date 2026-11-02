@@ -124,6 +124,10 @@ def create_application(
     current_user: CurrentUser,
     service: ApplicationService = Depends(get_application_service),
 ) -> ApplicationRead:
+    if current_user.role == UserRole.WORKER and (
+        data.manager_id is not None or data.assigned_worker_id is not None
+    ):
+        raise _forbidden("Workers cannot assign application owners")
     try:
         return service.create_application(data)
     except (NotFoundError, ConflictError, ValidationError) as exc:

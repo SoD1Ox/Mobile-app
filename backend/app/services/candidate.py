@@ -31,6 +31,9 @@ class CandidateService:
             raise NotFoundError(f"Candidate {candidate_id} not found")
         return candidate
 
+    def worker_has_assigned_candidate(self, candidate_id: int, worker_id: int) -> bool:
+        return self._repo.has_assigned_application(candidate_id, worker_id)
+
     def create_candidate(self, data: CandidateCreate) -> CandidateRead:
         if data.email and self._repo.get_by_email(data.email) is not None:
             raise ConflictError(f"Candidate with e-mail {data.email} already exists")

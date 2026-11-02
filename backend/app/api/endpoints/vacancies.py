@@ -11,6 +11,7 @@ RBAC:
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -43,6 +44,9 @@ def list_vacancies(
     city: str | None = Query(default=None, max_length=80),
     remote: bool | None = Query(default=None),
     salary_min: Decimal | None = Query(default=None, ge=0),
+    sort: Literal["newest", "salary_asc", "salary_desc"] = Query(
+        default="newest", description="Order by newest or salary"
+    ),
     ids: str | None = Query(default=None, max_length=2000,
                             description="Comma-separated vacancy ids (batch fetch)"),
 ) -> Page[VacancyRead]:
@@ -58,6 +62,7 @@ def list_vacancies(
         city=city,
         remote=remote,
         salary_min=salary_min,
+        sort=sort,
         ids=id_list,
     )
 

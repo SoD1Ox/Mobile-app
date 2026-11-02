@@ -102,11 +102,12 @@ class ApplicationRepository(
             return self._enrich(session, obj)
 
     def create(self, data: ApplicationCreate) -> ApplicationRead:
+        # Self-application fields (full_name/email/phone) belong to the
+        # candidate creation flow in the service, not to the applications row.
+        payload = data.model_dump(exclude={"full_name", "email", "phone"})
         with Vis(self._factory) as session:
-            # ApplicationCreate has no `status` field — new applications
-            # always start at "new" (DB default).
             obj = Application(
-                **data.model_dump(),
+                **payload,
                 status=ApplicationStatus.NEW,
                 prev_status=None,
                 status_history=f"-> new (created @ {_utcnow()})",

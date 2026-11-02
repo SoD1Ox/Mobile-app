@@ -1,98 +1,103 @@
-# Кадровое агентство — FastAPI + PostgreSQL + Alembic + Flutter
+<div align="center">
+  <img src="docs/assets/agency-banner.svg" alt="Кадровое агентство" width="100%">
+  <h1>Кадровое агентство</h1>
+  <p>Мобильное приложение и REST API для управления вакансиями, кандидатами и наймом</p>
+  <p>
+    <img src="https://img.shields.io/badge/Flutter-3.x-54C5F8?logo=flutter&logoColor=white" alt="Flutter">
+    <img src="https://img.shields.io/badge/FastAPI-REST-009688?logo=fastapi&logoColor=white" alt="FastAPI">
+    <img src="https://img.shields.io/badge/PostgreSQL-database-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL">
+    <a href="https://github.com/SoD1Ox/Mobile-app/actions/workflows/android-apk.yml"><img src="https://github.com/SoD1Ox/Mobile-app/actions/workflows/android-apk.yml/badge.svg" alt="Android APK build"></a>
+  </p>
+</div>
 
-Полноценное приложение кадрового агентства (рекрутинг): REST API на FastAPI, база данных
-PostgreSQL с миграциями Alembic, слоистая архитектура (ORM → репозитории → DTO → сервисы → API)
-и интерфейс на Flutter в стиле «жидкое стекло» (mint-green + coral, только кастомные векторные
-иконки — без стикеров, эмодзи и стандартных Material Icons).
-
-Подробный пошаговый гайд по запуску (Windows, PowerShell, порт PostgreSQL 1616): docs/GUIDE.md
+Приложение для кадрового агентства: сотрудники ведут вакансии и кандидатов, а отклики проходят по этапам найма. Интерфейс выполнен в едином стиле «жидкое стекло» и адаптирован для Android и компьютера.
 
 ## Возможности
 
-* Авторизация и регистрация (bcrypt-хеш паролей, JWT access/refresh, роли admin / manager / worker)
-* Главный экран: приветствие по времени суток, данные пользователя, живая статистика найма
-* Вакансии: список с поиском и фильтрами, карточка вакансии, создание / редактирование / удаление
-* Кандидаты: профиль, контакты, история откликов, заметки рекрутеров (CRUD)
-* Компании: карточки работодателей и контактные лица (CRUD)
-* Kanban-воронка найма: перетаскивание откликов между этапами (new → review → interview → offer → hired / rejected)
-* Пользователи системы (для администратора)
-* Пагинация limit/offset + бесконечная прокрутка (работа с большими данными)
-* Сообщения об ошибках на каждом экране, навигация со кнопкой «назад»
+| Раздел | Что можно делать |
+| --- | --- |
+| Авторизация | Регистрация, вход, JWT-сессия и роли пользователей |
+| Вакансии | Поиск и фильтры по городу, формату и зарплате; сортировка; избранное; создание и редактирование |
+| Кандидаты | Профили, контакты, отклики и заметки рекрутера |
+| Компании | Карточки компаний и контактные лица |
+| Воронка найма | Перемещение откликов между этапами, история статусов и назначение сотрудников |
+| Главная | Приветствие, профиль и статистика найма с обновлением по жесту |
 
-## Структура проекта
+Демо-вакансии используют зарплатные вилки по должностям: от 55–95 тыс. ₽ для складских ролей до 150–300 тыс. ₽ для ряда инженерных специализаций. Зарплата указана за месяц.
 
+## Архитектура
+
+```mermaid
+flowchart LR
+  UI[Flutter UI] --> API[FastAPI endpoints]
+  API --> S[Services]
+  S --> R[Repositories]
+  R --> ORM[SQLAlchemy ORM]
+  ORM --> DB[(PostgreSQL)]
+  DB -. schema changes .-> AL[Alembic]
+  API --> DTO[Pydantic DTO]
 ```
-backend/
-├── alembic/            # версионированные миграции схемы БД (upgrade/downgrade)
-├── app/
-│   ├── api/
-│   │   ├── dependencies/   # JWT-зависимости, проверка ролей (RBAC)
-│   │   └── endpoints/      # тонкие эндпоинты: валидация DTO + вызов сервиса
-│   ├── db/                 # фабрика сессий sessionmaker + SQLAlchemy-модели
-│   ├── dto/                # Pydantic-схемы запросов/ответов (отдельно от ORM)
-│   ├── repositories/       # все SQL-запросы по одной сущности на репозиторий
-│   ├── services/           # бизнес-логика (не в эндпоинтах!)
-│   ├── security/           # bcrypt, генерация/проверка JWT, refresh-токены
-│   └── config/             # настройки из .env
-├── scripts/seed.py         # наполнение БД тестовыми данными (~1000+ записей)
-└── requirements.txt
 
-ui/                     # Flutter-приложение (staffing_agency_ui)
-├── lib/
-│   ├── api/                # HTTP-клиент с JWT и авто-refresh
-│   ├── models/             # DTO-модели клиента (зеркало Pydantic-схем)
-│   ├── screens/            # auth, home, vacancies, candidates, companies,
-│   │                       # applications (Kanban), users + формы и детали
-│   ├── theme/              # glass.dart / glass_stack.dart — дизайн-система стекла
-│   └── widgets/            # стеклянные виджеты + кастомные векторные иконки
-docs/GUIDE.md           # пошаговый гайд запуска и типовые проблемы
-```
+Клиентские DTO, Pydantic-схемы API и ORM-модели разделены. Все запросы к базе идут через SQLAlchemy-сессии. SQLite не используется.
+
+## Технологии
+
+- **Клиент:** Flutter / Dart, HTTP, SharedPreferences
+- **API:** FastAPI, Pydantic, JWT, bcrypt
+- **База данных:** PostgreSQL, SQLAlchemy 2, Alembic
+- **Данные:** пагинация, поиск и фильтры на стороне API
 
 ## Быстрый запуск
 
-### Бэкенд
+Подробные инструкции для Windows и PowerShell находятся в [docs/GUIDE.md](docs/GUIDE.md).
+
+### 1. API и PostgreSQL
 
 ```powershell
 cd backend
-# 1. .env должен существовать (скопируйте из .env.example, DATABASE_URL на порт 1616)
-# 2. зависимости
+Copy-Item .env.example .env
+# В .env укажите PostgreSQL и задайте случайный SECRET_KEY длиной не менее 32 байт.
 pip install -r requirements.txt
-# 3. схема БД
 alembic upgrade head
-# 4. тестовые данные
-python -m scripts.seed --force
-# 5. сервер
-uvicorn app.main:app --host 127.0.0.1 --port 8000
+python -m scripts.seed
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Документация API: http://127.0.0.1:8000/docs
+Документация API: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
-### Интерфейс (Flutter)
+### 2. Flutter
 
 ```powershell
 cd ui
+flutter pub get
 flutter run -d edge
 ```
 
-Тестовые аккаунты после seed: `admin@example.com` / `manager@example.com` / `worker@example.com`,
-пароли: `admin123` / `manager123` / `worker123`.
+Демо-аккаунты после заполнения БД: `admin / admin123`, `manager / manager123`, `worker / worker123`.
 
-### Сборка APK
+### Android APK
+
+Собрать APK для телефона в той же Wi-Fi-сети, что и компьютер с API:
 
 ```powershell
 cd ui
-flutter build apk --release --dart-define=API_BASE_URL=http://<IP-вашего-ПК>:8000/api/v1
+flutter build apk --release --dart-define=API_BASE_URL=http://<IP-компьютера>:8000/api/v1
 ```
 
-Gradle-обёртка уже настроена на 8.14.3 (совместима с текущим Flutter).
+Файл появится в `ui/build/app/outputs/flutter-apk/app-release.apk`. Сервер API должен быть запущен на компьютере. Для Android-эмулятора можно использовать `http://10.0.2.2:8000/api/v1`. GitHub Actions также собирает APK для эмулятора: [запуски сборки](https://github.com/SoD1Ox/Mobile-app/actions/workflows/android-apk.yml).
 
-## Безопасность
+## Роли и безопасность
 
-* Пароли хранятся только в виде bcrypt-хеши
-* Все эндпоинты, кроме /auth/*, требуют Bearer-токен
-* RBAC (иерархия ролей):
-  * **admin** — всё: CRUD пользователей, все сущности, вся воронка найма;
-  * **manager** — полный CRUD вакансий/кандидатов/компаний, тасует всю воронку откликов, назначает ответственных исполнителей (worker'ов);
-  * **worker** — видит **только назначенные лично ему отклики** (`assigned_worker_id`), двигает их по воронке (свои кейсы) и оставляет заметки-комментарии; чужие отклики недоступны даже на чтение (серверная фильтрация + 403 на PATCH).
-  В UI это отражено навигацией: у worker только вкладки «Мои кейсы» и «Вакансии».
-* JWT access (короткий) + refresh (длинный), refresh ротируется
+| Роль | Доступ |
+| --- | --- |
+| Администратор | Все разделы и управление пользователями |
+| Рекрутер | Вакансии, компании, кандидаты и общая воронка |
+| Сотрудник | Вакансии и только назначенные ему отклики |
+
+Пароли хранятся в виде bcrypt-хешей. API проверяет JWT и права роли на сервере. Для запуска задайте собственный `SECRET_KEY`; демо-пароли предназначены только для локальных данных.
+
+## Документы
+
+- [Гайд запуска и настройки](docs/GUIDE.md)
+- [Vision](docs/pr1/Vision%202.0%20-%20допил.docx)
+- [Software Architecture Document](docs/pr2/Software%20Architecture%20Document.docx)

@@ -49,9 +49,9 @@ class AppScope extends InheritedWidget {
 void showError(BuildContext context, Object error) {
   final msg = error is ApiException
       ? error.message
-      : error is Exception
-          ? '$error'
-          : 'Неизвестная ошибка';
+      : error.toString().isEmpty
+          ? 'Неизвестная ошибка'
+          : error.toString();
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(

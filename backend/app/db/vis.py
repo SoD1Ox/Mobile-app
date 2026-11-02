@@ -30,14 +30,12 @@ def get_engine() -> Engine:
     global _engine
     if _engine is None:
         url = settings.database_url
-        kwargs: dict = {"pool_pre_ping": True, "echo": False}
-        if url.startswith("sqlite"):
-            # SQLite ignores pool args used for PostgreSQL and forbids
-            # cross-thread DB access by default (FastAPI runs sync
-            # endpoints in a threadpool).
-            kwargs.pop("pool_pre_ping")
-            kwargs["connect_args"] = {"check_same_thread": False}
-        _engine = create_engine(url, **kwargs)
+        if not url.startswith(("postgresql://", "postgresql+")):
+            raise ValueError(
+                "This application requires PostgreSQL. Set DATABASE_URL or DB_* "
+                "to a PostgreSQL connection."
+            )
+        _engine = create_engine(url, pool_pre_ping=True, echo=False)
     return _engine
 
 

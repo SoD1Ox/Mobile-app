@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app_state.dart';
 import '../models/models.dart';
@@ -28,11 +29,15 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
   int _page = 0;
   bool _loading = false;
   bool _hasMore = true;
+  bool _favoritesReady = false;
+  bool _showFavorites = false;
+  final Set<int> _favoriteIds = {};
 
   String _search = '';
   String? _city;
   bool? _remote;
   double? _salaryMin;
+  String _sort = 'newest';
 
   static const _pageSize = 25;
 
@@ -40,7 +45,26 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _load(reset: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadFavorites());
+  }
+
+  Future<void> _loadFavorites() async {
+    final user = AppScope.read(context).user;
+    final prefs = await SharedPreferences.getInstance();
+    final ids = user == null
+        ? <int>{}
+        : (prefs.getStringList('favorite_vacancies_${user.id}') ?? const [])
+            .map(int.tryParse)
+            .whereType<int>()
+            .toSet();
+    if (!mounted) return;
+    setState(() {
+      _favoriteIds
+        ..clear()
+        ..addAll(ids);
+      _favoritesReady = true;
+    });
+    await _load(reset: true);
   }
 
   @override
@@ -60,14 +84,27 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
   }
 
   Future<void> _load({bool reset = false}) async {
-    if (_loading) return;
+    if (_loading || !_favoritesReady) return;
     setState(() => _loading = true);
     try {
       final api = AppScope.read(context).api;
+      if (_showFavorites && _favoriteIds.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _items = [];
+            _total = 0;
+            _page = 0;
+            _hasMore = false;
+          });
+        }
+        return;
+      }
       final next = reset ? 1 : _page + 1;
       final raw = await api.get('/vacancies', {
         'page': next,
         'page_size': _pageSize,
+        'sort': _sort,
+        if (_showFavorites) 'ids': _favoriteIds.join(','),
         if (_search.isNotEmpty) 'search': _search,
         if (_city != null) 'city': _city,
         if (_remote != null) 'remote': _remote,
@@ -88,11 +125,41 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
     }
   }
 
+  Future<void> _toggleFavorite(VacancyItem vacancy) async {
+    final user = AppScope.read(context).user;
+    if (user == null) return;
+    final wasSaved = _favoriteIds.contains(vacancy.id);
+    setState(() {
+      if (wasSaved) {
+        _favoriteIds.remove(vacancy.id);
+      } else {
+        _favoriteIds.add(vacancy.id);
+      }
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        'favorite_vacancies_${user.id}',
+        (_favoriteIds.toList()..sort()).map((id) => '$id').toList(),
+      );
+      if (_showFavorites) await _load(reset: true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (wasSaved) {
+          _favoriteIds.add(vacancy.id);
+        } else {
+          _favoriteIds.remove(vacancy.id);
+        }
+      });
+      showError(context, e);
+    }
+  }
+
   Future<void> _openForm({VacancyItem? vacancy}) async {
     final changed = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-          builder: (_) => VacancyFormScreen(existing: vacancy)),
+      MaterialPageRoute(builder: (_) => VacancyFormScreen(existing: vacancy)),
     );
     if (changed == true) _load(reset: true);
   }
@@ -100,11 +167,41 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
   @override
   Widget build(BuildContext context) {
     final user = AppScope.read(context).user;
-    final hasFilters =
-        _search.isNotEmpty || _city != null || _remote != null || _salaryMin != null;
+    final hasFilters = _search.isNotEmpty ||
+        _city != null ||
+        _remote != null ||
+        _salaryMin != null ||
+        _showFavorites;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Вакансии'),
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Сортировка',
+            initialValue: _sort,
+            onSelected: (value) {
+              setState(() => _sort = value);
+              _load(reset: true);
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'newest', child: Text('Сначала новые')),
+              PopupMenuItem(
+                  value: 'salary_desc', child: Text('Сначала выше зарплата')),
+              PopupMenuItem(
+                  value: 'salary_asc', child: Text('Сначала ниже зарплата')),
+            ],
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                children: [
+                  GlassIcon(Glyph.list, size: 18),
+                  SizedBox(width: 5),
+                  Text('Сортировка'),
+                ],
+              ),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(118),
           child: Column(
@@ -120,13 +217,11 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                     prefixIcon: const GlassIcon(Glyph.search, size: 20),
                     suffixIcon: _search.isEmpty
                         ? null
-                        : GlassIconButton(Glyph.close,
-                            size: 18,
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _search = '');
-                              _load(reset: true);
-                            }),
+                        : GlassIconButton(Glyph.close, size: 18, onPressed: () {
+                            _searchController.clear();
+                            setState(() => _search = '');
+                            _load(reset: true);
+                          }),
                   ),
                   onSubmitted: (v) {
                     setState(() => _search = v.trim());
@@ -136,9 +231,25 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
               ),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
+                    FilterChip(
+                      avatar: GlassIcon(
+                        _showFavorites ? Glyph.starFilled : Glyph.star,
+                        size: 16,
+                      ),
+                      label: const Text('Избранное'),
+                      selected: _showFavorites,
+                      onSelected: !_favoritesReady
+                          ? null
+                          : (value) {
+                              setState(() => _showFavorites = value);
+                              _load(reset: true);
+                            },
+                    ),
+                    const SizedBox(width: 8),
                     FilterChip(
                       label: Text(_city == null ? 'Все города' : _city!),
                       selected: _city != null,
@@ -173,6 +284,8 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                             _city = null;
                             _remote = null;
                             _salaryMin = null;
+                            _showFavorites = false;
+                            _sort = 'newest';
                           });
                           _load(reset: true);
                         },
@@ -238,11 +351,28 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                                         fontSize: 15.5,
                                         fontWeight: FontWeight.w700)),
                               ),
+                              IconButton(
+                                tooltip: _favoriteIds.contains(v.id)
+                                    ? 'Убрать из избранного'
+                                    : 'В избранное',
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => _toggleFavorite(v),
+                                icon: GlassIcon(
+                                  _favoriteIds.contains(v.id)
+                                      ? Glyph.starFilled
+                                      : Glyph.star,
+                                  size: 20,
+                                  color: _favoriteIds.contains(v.id)
+                                      ? const Color(0xFFFFC857)
+                                      : null,
+                                ),
+                              ),
                               if (v.remote)
                                 const Padding(
                                   padding: EdgeInsets.only(left: 8),
                                   child: StatusChip(
-                                      label: 'Удалённо', color: const Color(0xFF5BC8E8)),
+                                      label: 'Удалённо',
+                                      color: const Color(0xFF5BC8E8)),
                                 ),
                             ],
                           ),
@@ -270,7 +400,8 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                           ),
                           if (v.skills.isNotEmpty) ...[
                             const SizedBox(height: 8),
-                            Text(v.skills.map((e) => e.name).take(6).join(' · '),
+                            Text(
+                                v.skills.map((e) => e.name).take(6).join(' · '),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -294,16 +425,14 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
       builder: (ctx) => SimpleDialog(
         title: const Text('Город'),
         children: [
-          for (final city in (_items
-              .map((e) => e.city)
-              .whereType<String>()
-              .toSet()
-              .toList()
-            ..sort()))
+          for (final city
+              in (_items.map((e) => e.city).whereType<String>().toSet().toList()
+                ..sort()))
             SimpleDialogOption(
                 onPressed: () => Navigator.pop(ctx, city), child: Text(city)),
           SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, ''), child: const Text('Все')),
+              onPressed: () => Navigator.pop(ctx, ''),
+              child: const Text('Все')),
         ],
       ),
     );
@@ -323,10 +452,11 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
 
   Future<void> _pickSalary() async {
     final presets = <String, double>{
-      'от 80 000 ₽': 80000,
+      'от 60 000 ₽': 60000,
+      'от 100 000 ₽': 100000,
       'от 150 000 ₽': 150000,
-      'от 250 000 ₽': 250000,
-      'от 350 000 ₽': 350000,
+      'от 220 000 ₽': 220000,
+      'от 300 000 ₽': 300000,
       'Любая': 0,
     };
     final label = await showDialog<String>(

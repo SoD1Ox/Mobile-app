@@ -11,6 +11,7 @@ from __future__ import annotations
 from app.dto.application import ApplicationCreate, ApplicationRead, ApplicationUpdate
 from app.dto.common import Page, PageParams
 from app.models.application import ApplicationStatus
+from app.models.user import UserRole
 from app.repositories.application import ApplicationRepository
 from app.repositories.candidate import CandidateRepository
 from app.repositories.user import UserRepository
@@ -84,6 +85,10 @@ class ApplicationService:
         email = payload.pop("email", None)
         phone = payload.pop("phone", None)
 
+        if self._vacancy_repo.get_by_id(data.vacancy_id) is None:
+            raise NotFoundError(f"Vacancy {data.vacancy_id} not found")
+        self._validate_assignments(data.manager_id, data.assigned_worker_id)
+
         if candidate_id is not None:
             if self._candidate_repo.get_by_id(candidate_id) is None:
                 raise NotFoundError(f"Candidate {candidate_id} not found")
@@ -105,15 +110,6 @@ class ApplicationService:
             )
             candidate_id = created.id
 
-        if self._vacancy_repo.get_by_id(data.vacancy_id) is None:
-            raise NotFoundError(f"Vacancy {data.vacancy_id} not found")
-        if data.manager_id is not None and self._user_repo.get_by_id(data.manager_id) is None:
-            raise ValidationError(f"Manager {data.manager_id} does not exist")
-        if (
-            data.assigned_worker_id is not None
-            and self._user_repo.get_by_id(data.assigned_worker_id) is None
-        ):
-            raise ValidationError(f"Worker {data.assigned_worker_id} does not exist")
         if self._repo.exists_pair(candidate_id, data.vacancy_id):
             raise ConflictError("This candidate already applied to this vacancy")
         return self._repo.create(
@@ -122,17 +118,25 @@ class ApplicationService:
 
     def update_application(self, application_id: int, data: ApplicationUpdate) -> ApplicationRead:
         self.get_application(application_id)  # 404 if missing
-        if data.manager_id is not None and self._user_repo.get_by_id(data.manager_id) is None:
-            raise ValidationError(f"Manager {data.manager_id} does not exist")
-        if (
-            data.assigned_worker_id is not None
-            and self._user_repo.get_by_id(data.assigned_worker_id) is None
-        ):
-            raise ValidationError(f"Worker {data.assigned_worker_id} does not exist")
+        self._validate_assignments(data.manager_id, data.assigned_worker_id)
         updated = self._repo.update(application_id, data)
         if updated is None:
             raise NotFoundError(f"Application {application_id} not found")
         return updated
+
+    def _validate_assignments(self, manager_id: int | None, worker_id: int | None) -> None:
+        if manager_id is not None:
+            manager = self._user_repo.get_by_id(manager_id)
+            if manager is None or manager.role not in {UserRole.ADMIN, UserRole.MANAGER}:
+                raise ValidationError(
+                    f"Manager {manager_id} does not exist or cannot manage applications"
+                )
+        if worker_id is not None:
+            worker = self._user_repo.get_by_id(worker_id)
+            if worker is None or worker.role != UserRole.WORKER:
+                raise ValidationError(
+                    f"Worker {worker_id} does not exist or is not a worker"
+                )
 
     def delete_application(self, application_id: int) -> None:
         if not self._repo.delete(application_id):

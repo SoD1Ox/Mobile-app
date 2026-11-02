@@ -25,6 +25,7 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
   CompanyItem? _company;
   Map<String, int> _funnel = {};
   bool _loading = true;
+  Object? _loadError;
 
   @override
   void initState() {
@@ -33,8 +34,14 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
   }
 
   Future<void> _load() async {
-    final api = AppScope.read(context).api;
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
+    }
     try {
+      final api = AppScope.read(context).api;
       final v = await api.get('/vacancies/${widget.vacancyId}')
           as Map<String, dynamic>;
       Object? company;
@@ -42,40 +49,36 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
         company = await api.get('/companies/${v['company_id']}');
       } catch (_) {/* company may be deleted */}
       final counts = <String, int>{};
-      // Preferred path: one GROUP BY aggregate (fast, no row transfer).
+      // This funnel is vacancy-specific, so query its paginated applications.
       try {
-        final st = await api.get('/applications/stats');
-        if (st is Map && st['by_status'] is Map) {
-          (st['by_status'] as Map).forEach((k, val) {
-            final n = val is num ? val.toInt() : int.tryParse('$val') ?? 0;
-            counts['$k'] = n;
-          });
-        } else {
-          throw Exception('unexpected stats shape');
+        final rawApps = await api
+            .get('/applications', {'vacancy_id': v['id'], 'page_size': 200});
+        final items = (rawApps is Map && rawApps['items'] is List)
+            ? rawApps['items'] as List
+            : const [];
+        for (final e in items) {
+          if (e is! Map) continue;
+          final st = e['status']?.toString();
+          if (st != null) counts[st] = (counts[st] ?? 0) + 1;
         }
-      } catch (_) {
-        // Fallback for an older backend without /stats: page through rows.
-        try {
-          final rawApps = await api.get('/applications',
-              {'vacancy_id': v['id'], 'page_size': 200});
-          final items = (rawApps is Map ? rawApps['items'] : null) as List? ??
-              const [];
-          for (final e in items) {
-            final st = (e as Map)['status']?.toString();
-            if (st != null) counts[st] = (counts[st] ?? 0) + 1;
-          }
-        } catch (_) {/* funnel is optional */}
-      }
+      } catch (_) {/* funnel is optional */}
       if (!mounted) return;
       setState(() {
         _vacancy = v;
-        _company = company == null ? null : CompanyItem.fromJson(company as Map<String, dynamic>);
+        _company = company == null
+            ? null
+            : CompanyItem.fromJson(company as Map<String, dynamic>);
         _funnel = counts;
         _loading = false;
+        _loadError = null;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _loadError = e;
+        _vacancy = null;
+      });
       showError(context, e);
     }
   }
@@ -84,7 +87,8 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
     final changed = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-          builder: (_) => VacancyFormScreen(existing: VacancyItem.fromJson(_vacancy!))),
+          builder: (_) =>
+              VacancyFormScreen(existing: VacancyItem.fromJson(_vacancy!))),
     );
     if (changed == true) _load();
   }
@@ -94,7 +98,8 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
         'Вакансия «${_vacancy!['title']}» и все её отклики будут удалены.');
     if (!ok) return;
     final api = AppScope.read(context).api;
-    final done = await runGuarded(context, () => api.delete('/vacancies/${widget.vacancyId}'));
+    final done = await runGuarded(
+        context, () => api.delete('/vacancies/${widget.vacancyId}'));
     if (done && mounted) Navigator.pop(context, true);
   }
 
@@ -113,7 +118,8 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
           children: [
             TextField(
                 controller: nameCtl,
-                decoration: const InputDecoration(labelText: 'ФИО кандидата *')),
+                decoration:
+                    const InputDecoration(labelText: 'ФИО кандидата *')),
             const SizedBox(height: 10),
             TextField(
                 controller: emailCtl,
@@ -133,8 +139,8 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
           FilledButton(
               onPressed: () {
                 if (nameCtl.text.trim().length < 2) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(content: Text('Укажите ФИО (минимум 2 символа)')));
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                      content: Text('Укажите ФИО (минимум 2 символа)')));
                   return;
                 }
                 Navigator.pop(ctx, true);
@@ -164,6 +170,31 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
   Widget build(BuildContext context) {
     final user = AppScope.read(context).user;
     if (_loading) return const Scaffold(body: LoadingView());
+    if (_vacancy == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Вакансия')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_loadError == null
+                    ? 'Вакансия не найдена'
+                    : 'Не удалось загрузить вакансию'),
+                const SizedBox(height: 12),
+                if (_loadError != null)
+                  FilledButton.icon(
+                    onPressed: _load,
+                    icon: const GlassIcon(Glyph.refresh, size: 18),
+                    label: const Text('Повторить'),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     final v = _vacancy!;
     final item = VacancyItem.fromJson(v);
     final skills = ((v['skills'] as List?) ?? [])
@@ -184,10 +215,12 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
                   children: [
                     Expanded(
                       child: Text(item.title,
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.w800)),
                     ),
                     if (item.remote)
-                      const StatusChip(label: 'Удалённо', color: Color(0xFF26C6DA)),
+                      const StatusChip(
+                          label: 'Удалённо', color: Color(0xFF26C6DA)),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -199,7 +232,8 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
                         color: const Color(0xFF8CE99A)),
                     if (item.city != null) _meta(Glyph.pin, item.city!),
                     if (_company != null) _meta(Glyph.building, _company!.name),
-                    _meta(Glyph.list, '${_funnel.values.fold<int>(0, (a, b) => a + b)} откликов'),
+                    _meta(Glyph.list,
+                        '${_funnel.values.fold<int>(0, (a, b) => a + b)} откликов'),
                   ],
                 ),
                 if (skills.isNotEmpty) ...[
@@ -209,7 +243,8 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
                     runSpacing: 6,
                     children: [
                       for (final s in skills)
-                        StatusChip(label: s.name, color: const Color(0xFF7986CB)),
+                        StatusChip(
+                            label: s.name, color: const Color(0xFF7986CB)),
                     ],
                   ),
                 ],
@@ -253,7 +288,8 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => ApplicationsScreen(vacancyId: item.id)),
+                            builder: (_) =>
+                                ApplicationsScreen(vacancyId: item.id)),
                       ),
                       icon: const GlassIcon(Glyph.kanban, size: 18),
                       label: const Text('Открыть отклики'),

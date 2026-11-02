@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.api.dependencies.auth import AdminUser, CurrentUser
 from app.api.dependencies.providers import get_user_service
 from app.dto.user import UserCreate, UserRead, UserUpdate
+from app.models.user import UserRole
 from app.services.errors import ConflictError, NotFoundError
 from app.services.user import UserService
 
@@ -35,6 +36,11 @@ def get_user(
     service: UserService = Depends(get_user_service),
     current_user: CurrentUser = None,  # type: ignore[assignment]
 ) -> UserRead:
+    if current_user.role != UserRole.ADMIN and current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only view your own account",
+        )
     try:
         return service.get_user(user_id)
     except NotFoundError as exc:

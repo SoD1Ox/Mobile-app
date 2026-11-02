@@ -35,6 +35,7 @@ class VacancyRepository(BaseRepository[Vacancy, VacancyRead, VacancyCreate, Vaca
         city: str | None = None,
         remote: bool | None = None,
         salary_min: Decimal | None = None,
+        sort: str = "newest",
         ids: list[int] | None = None,
     ) -> Page[VacancyRead]:
         """The main large-data mechanism: pagination + filtering + search.
@@ -69,7 +70,7 @@ class VacancyRepository(BaseRepository[Vacancy, VacancyRead, VacancyCreate, Vaca
 
             total = session.scalar(count_stmt) or 0
             rows: Sequence[Vacancy] = session.scalars(
-                stmt.order_by(Vacancy.id.desc())
+                stmt.order_by(*self._ordering(sort))
                 .offset((params.page - 1) * params.page_size)
                 .limit(params.page_size)
             ).all()
@@ -79,6 +80,20 @@ class VacancyRepository(BaseRepository[Vacancy, VacancyRead, VacancyCreate, Vaca
                 items=items, total=total, page=params.page,
                 page_size=params.page_size, pages=pages,
             )
+
+    @staticmethod
+    def _ordering(sort: str):
+        if sort == "salary_asc":
+            return (
+                func.coalesce(Vacancy.salary_from, Vacancy.salary_to).asc().nulls_last(),
+                Vacancy.id.desc(),
+            )
+        if sort == "salary_desc":
+            return (
+                func.coalesce(Vacancy.salary_from, Vacancy.salary_to).desc().nulls_last(),
+                Vacancy.id.desc(),
+            )
+        return (Vacancy.id.desc(),)
 
     def get_with_skills(self, vacancy_id: int) -> VacancyRead | None:
         with Vis(self._factory) as session:

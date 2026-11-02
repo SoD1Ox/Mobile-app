@@ -20,13 +20,21 @@ class Settings(BaseSettings):
 
     def model_post_init(self, __context) -> None:
         """Build database_url from DB_* parts if DATABASE_URL is not set."""
-        if not self.database_url:
-            object.__setattr__(
-                self,
-                "database_url",
-                f"postgresql+psycopg2://{self.db_user}:{self.db_password}"
-                f"@{self.db_host}:{self.db_port}/{self.db_name}",
+        url = self.database_url or (
+            f"postgresql+psycopg2://{self.db_user}:{self.db_password}"
+            f"@{self.db_host}:{self.db_port}/{self.db_name}"
+        )
+        if not url.startswith(("postgresql://", "postgresql+")):
+            raise ValueError("This application requires PostgreSQL.")
+        if (
+            len(self.secret_key.encode("utf-8")) < 32
+            or self.secret_key.startswith("change-me-in-production")
+            or self.secret_key.startswith("replace-with-")
+        ):
+            raise ValueError(
+                "SECRET_KEY must be a unique random value of at least 32 bytes."
             )
+        object.__setattr__(self, "database_url", url)
 
     # --- Security / JWT ---
     secret_key: str = "change-me-in-production-9f8a7b6c5d4e3f2a1b0c"
