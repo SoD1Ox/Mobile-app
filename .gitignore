@@ -1,5 +1,9 @@
 *.db
 
+# Android/Gradle build outputs
+ui/android/.gradle/
+ui/android/build/
+
 # Логи и артефакты
 backend/server.log
 *.log

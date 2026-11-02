@@ -217,8 +217,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
       } catch (_) {/* contacts are optional */}
       int vcount = 0;
       try {
-        final vraw = await api
-            .get('/vacancies', {'page_size': 1, 'company_id': widget.companyId});
+        final vraw = await api.get(
+            '/vacancies', {'page_size': 1, 'company_id': widget.companyId});
         if (vraw is Map) vcount = (vraw['total'] as num?)?.toInt() ?? 0;
       } catch (_) {/* vacancy counter is optional */}
       if (!mounted) return;
