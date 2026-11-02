@@ -7,10 +7,11 @@ via ``/auth/me``.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies.auth import AdminUser, CurrentUser
 from app.api.dependencies.providers import get_user_service
+from app.dto.common import Page, PageParams
 from app.dto.user import UserCreate, UserRead, UserUpdate
 from app.models.user import UserRole
 from app.services.errors import ConflictError, NotFoundError
@@ -19,15 +20,13 @@ from app.services.user import UserService
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("", response_model=list[UserRead], summary="List all users (admin only)")
+@router.get("", response_model=Page[UserRead], summary="Paginated user list (admin only)")
 def list_users(
     service: UserService = Depends(get_user_service),
     _: AdminUser = None,  # type: ignore[assignment]
-    search: str | None = Query(default=None, min_length=1, max_length=200),
-) -> list[UserRead]:
-    if search:
-        return service.search(search)
-    return service.list_users()
+    params: PageParams = Depends(),
+) -> Page[UserRead]:
+    return service.list_users_paginated(params)
 
 
 @router.get("/{user_id}", response_model=UserRead, summary="Get one user (authenticated)")

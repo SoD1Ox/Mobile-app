@@ -2,6 +2,8 @@
 /// Available to ADMIN role only; list/create/edit/delete + role & is_active.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
@@ -18,6 +20,14 @@ class UsersScreen extends StatefulWidget {
 
 class _UsersScreenState extends State<UsersScreen> {
   List<Map<String, dynamic>> _users = [];
+  final _search = TextEditingController();
+  final _scroll = ScrollController();
+  Timer? _searchTimer;
+  int _page = 1;
+  int _pages = 1;
+  int _total = 0;
+  int _queryVersion = 0;
+  bool _loadingMore = false;
   bool _loading = true;
 
   static const _roleLabels = {
@@ -30,25 +40,90 @@ class _UsersScreenState extends State<UsersScreen> {
   void initState() {
     super.initState();
     _load();
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _searchTimer?.cancel();
+    _search.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scroll.position.extentAfter < 280 &&
+        !_loading &&
+        !_loadingMore &&
+        _page < _pages) {
+      _loadMore();
+    }
+  }
+
+  void _onSearchChanged(String _) {
+    _searchTimer?.cancel();
+    _searchTimer = Timer(const Duration(milliseconds: 350), () => _load());
   }
 
   Future<void> _load() async {
+    final queryVersion = ++_queryVersion;
+    final query = _search.text.trim();
     setState(() => _loading = true);
     try {
-      final raw = await AppScope.read(context).api.get('/users');
-      if (!mounted) return;
+      final raw = await AppScope.read(context).api.get('/users', {
+        'page': 1,
+        'page_size': 30,
+        if (query.isNotEmpty) 'search': query,
+      });
+      if (!mounted || queryVersion != _queryVersion) return;
       // Tolerant parsing: any unexpected JSON shape must never crash the
       // screen with "Unexpected null value" — bad entries are skipped.
-      final list = raw is List ? raw : const [];
-      _users = list
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
-      _loading = false;
+      final envelope = raw is Map ? raw : const {};
+      final list =
+          envelope['items'] is List ? envelope['items'] as List : const [];
+      setState(() {
+        _users = list
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        _page = (envelope['page'] as num?)?.toInt() ?? 1;
+        _pages = (envelope['pages'] as num?)?.toInt() ?? 1;
+        _total = (envelope['total'] as num?)?.toInt() ?? _users.length;
+        _loading = false;
+      });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || queryVersion != _queryVersion) return;
       setState(() => _loading = false);
       if (mounted) showError(context, e);
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || _page >= _pages) return;
+    final queryVersion = _queryVersion;
+    final query = _search.text.trim();
+    setState(() => _loadingMore = true);
+    try {
+      final raw = await AppScope.read(context).api.get('/users', {
+        'page': _page + 1,
+        'page_size': 30,
+        if (query.isNotEmpty) 'search': query,
+      });
+      if (!mounted || queryVersion != _queryVersion) return;
+      final envelope = raw is Map ? raw : const {};
+      final list =
+          envelope['items'] is List ? envelope['items'] as List : const [];
+      setState(() {
+        _users.addAll(
+            list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
+        _page = (envelope['page'] as num?)?.toInt() ?? _page;
+        _pages = (envelope['pages'] as num?)?.toInt() ?? _pages;
+        _total = (envelope['total'] as num?)?.toInt() ?? _total;
+      });
+    } catch (e) {
+      if (mounted && queryVersion == _queryVersion) showError(context, e);
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
@@ -61,9 +136,7 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 
   Future<void> _delete(Map<String, dynamic> u) async {
-    final yes = await confirmDialog(
-        context,
-        'Удалить пользователя?',
+    final yes = await confirmDialog(context, 'Удалить пользователя?',
         '«${u['username']}» (${_roleLabels[u['role']] ?? u['role']}) будет удалён навсегда.');
     if (!yes) return;
     // ignore: use_build_context_synchronously
@@ -81,63 +154,107 @@ class _UsersScreenState extends State<UsersScreen> {
           onPressed: () => _openForm(),
           icon: const GlassIcon(Glyph.plusCircle, size: 20),
           label: const Text('Пользователь')),
-      body: _loading
+      body: _loading && _users.isEmpty
           ? const LoadingView()
-          : ListView.builder(
-              itemCount: _users.length,
-              itemBuilder: (_, i) {
-                final u = _users[i];
-                final role = '${u['role']}';
-                final isMe = me?.id == u['id'];
-                return GlassListCard(
-                  child: ListTile(
-                    leading: CircleAvatar(
-                        child: Text((u['full_name'] as String? ?? '?')
-                            .characters
-                            .first
-                            .toUpperCase())),
-                    title: Text(u['full_name'] ?? u['username'],
-                        // ignore: dead_null_aware_expression
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    subtitle: Text(
-                        '@${u['username']} · ${u['email']}\n${_roleLabels[role] ?? role}'
-                        '${u['is_active'] == false ? ' · неактивен' : ''}'),
-                    trailing: Wrap(
-                      spacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        if ((u['completion_score'] as num?) != null &&
-                            role != 'worker') ...[
-                          const GlassIcon(Glyph.chart, size: 14),
-                          Text(
-                              '${(((u['completion_score'] as num).toDouble()) * 100).round()}%',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: kAccentColor)),
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView.builder(
+                controller: _scroll,
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: _users.length + 2 + (_loadingMore ? 1 : 0),
+                itemBuilder: (_, i) {
+                  if (i == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: TextField(
+                        controller: _search,
+                        onChanged: _onSearchChanged,
+                        decoration: InputDecoration(
+                          hintText: 'Поиск по имени, логину или email',
+                          prefixIcon: const GlassIcon(Glyph.search, size: 19),
+                          suffixIcon: _search.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Очистить поиск',
+                                  onPressed: () {
+                                    _searchTimer?.cancel();
+                                    _search.clear();
+                                    _load();
+                                  },
+                                  icon: const GlassIcon(Glyph.close, size: 18),
+                                ),
+                        ),
+                      ),
+                    );
+                  }
+                  if (i == _users.length + 1) {
+                    return Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Center(
+                          child: _users.isEmpty
+                              ? const Text('Пользователи не найдены')
+                              : Text('Показано ${_users.length} из $_total')),
+                    );
+                  }
+                  if (i > _users.length) {
+                    return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()));
+                  }
+                  final userIndex = i - 1;
+                  final u = _users[userIndex];
+                  final role = '${u['role']}';
+                  final isMe = me?.id == u['id'];
+                  return GlassListCard(
+                    child: ListTile(
+                      leading: CircleAvatar(
+                          child: Text((u['full_name'] as String? ?? '?')
+                              .characters
+                              .first
+                              .toUpperCase())),
+                      title: Text(u['full_name'] ?? u['username'],
+                          // ignore: dead_null_aware_expression
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                      subtitle: Text(
+                          '@${u['username']} · ${u['email']}\n${_roleLabels[role] ?? role}'
+                          '${u['is_active'] == false ? ' · неактивен' : ''}'),
+                      trailing: Wrap(
+                        spacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if ((u['completion_score'] as num?) != null &&
+                              role != 'worker') ...[
+                            const GlassIcon(Glyph.chart, size: 14),
+                            Text(
+                                '${(((u['completion_score'] as num).toDouble()) * 100).round()}%',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: kAccentColor)),
+                          ],
+                          if (isMe)
+                            const Tooltip(
+                                message: 'Это вы',
+                                child: Padding(
+                                    padding: EdgeInsets.all(8),
+                                    child: GlassIcon(Glyph.person, size: 20)))
+                          else
+                            Wrap(spacing: 4, children: [
+                              GlassIconButton(Glyph.edit,
+                                  tooltip: 'Редактировать',
+                                  onPressed: () => _openForm(existing: u)),
+                              GlassIconButton(Glyph.delete,
+                                  tooltip: 'Удалить',
+                                  color: const Color(0xFFF16A6A),
+                                  onPressed: () => _delete(u)),
+                            ]),
                         ],
-                        if (isMe)
-                          const Tooltip(
-                              message: 'Это вы',
-                              child: Padding(
-                                  padding: EdgeInsets.all(8),
-                                  child: GlassIcon(Glyph.person, size: 20)))
-                        else
-                          Wrap(spacing: 4, children: [
-                            GlassIconButton(Glyph.edit,
-                                tooltip: 'Редактировать',
-                                onPressed: () => _openForm(existing: u)),
-                            GlassIconButton(Glyph.delete,
-                                tooltip: 'Удалить',
-                                color: const Color(0xFFF16A6A),
-                                onPressed: () => _delete(u)),
-                          ]),
-                      ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
     );
   }
@@ -154,12 +271,12 @@ class _UserFormScreen extends StatefulWidget {
 
 class _UserFormScreenState extends State<_UserFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final _username = TextEditingController(
-      text: widget.existing?['username'] ?? '');
+  late final _username =
+      TextEditingController(text: widget.existing?['username'] ?? '');
   late final _email =
       TextEditingController(text: widget.existing?['email'] ?? '');
-  late final _fullName = TextEditingController(
-      text: widget.existing?['full_name'] ?? '');
+  late final _fullName =
+      TextEditingController(text: widget.existing?['full_name'] ?? '');
   late final _password = TextEditingController();
   late String _role = widget.existing?['role'] ?? 'worker';
   late bool _isActive = widget.existing?['is_active'] ?? true;
@@ -197,7 +314,8 @@ class _UserFormScreenState extends State<_UserFormScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
-      showInfo(context, _isEdit ? 'Пользователь обновлён' : 'Пользователь создан');
+      showInfo(
+          context, _isEdit ? 'Пользователь обновлён' : 'Пользователь создан');
       Navigator.pop(context, true);
     }
   }
@@ -206,7 +324,8 @@ class _UserFormScreenState extends State<_UserFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: Text(_isEdit ? 'Редактирование пользователя' : 'Новый пользователь')),
+          title: Text(
+              _isEdit ? 'Редактирование пользователя' : 'Новый пользователь')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -222,8 +341,9 @@ class _UserFormScreenState extends State<_UserFormScreen> {
                 controller: _email,
                 label: 'Email *',
                 keyboardType: TextInputType.emailAddress,
-                validator: (v) =>
-                    (v == null || !v.contains('@')) ? 'Некорректный email' : null),
+                validator: (v) => (v == null || !v.contains('@'))
+                    ? 'Некорректный email'
+                    : null),
             AppTextField(
                 controller: _fullName,
                 label: 'ФИО *',

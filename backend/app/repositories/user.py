@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from app.db.vis import Vis
+from app.dto.common import Page, PageParams
 from app.dto.user import UserCreate, UserRead, UserUpdate
 from app.models.user import User
 from app.repositories.base import BaseRepository
@@ -43,6 +44,33 @@ class UserRepository(BaseRepository[User, UserRead, UserCreate, UserUpdate]):
                 .order_by(User.username)
             ).all()
             return [self._to_read(r) for r in rows]  # type: ignore[misc]
+
+    def search_paginated(self, params: PageParams) -> Page[UserRead]:
+        """Return a bounded page of users, with optional server-side search."""
+        stmt = select(User)
+        count_stmt = select(func.count()).select_from(User)
+        if params.search:
+            pattern = f"%{params.search.strip().lower()}%"
+            condition = or_(
+                User.username.ilike(pattern),
+                User.email.ilike(pattern),
+                User.full_name.ilike(pattern),
+            )
+            stmt = stmt.where(condition)
+            count_stmt = count_stmt.where(condition)
+        with Vis(self._factory) as session:
+            total = session.scalar(count_stmt) or 0
+            rows = session.scalars(
+                stmt.order_by(User.id.desc())
+                .offset((params.page - 1) * params.page_size)
+                .limit(params.page_size)
+            ).all()
+            items = [self._to_read(row) for row in rows]
+            return Page(
+                items=items, total=total, page=params.page,
+                page_size=params.page_size,
+                pages=(total + params.page_size - 1) // params.page_size,
+            )
 
     # ------------------------------------- password-aware helpers (security)
     def get_password_hash(self, user_id: int) -> str | None:

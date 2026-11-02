@@ -9,6 +9,7 @@ from __future__ import annotations
 import jwt as pyjwt
 
 from app.dto.auth import TokenPair
+from app.dto.common import Page, PageParams
 from app.dto.user import UserCreate, UserRead, UserRegister, UserUpdate
 from app.models.user import UserRole
 from app.repositories.user import UserRepository
@@ -80,6 +81,9 @@ class UserService:
 
     def search(self, keyword: str) -> list[UserRead]:
         return self._repo.search(keyword)
+
+    def list_users_paginated(self, params: PageParams) -> Page[UserRead]:
+        return self._repo.search_paginated(params)
 
     def get_user(self, user_id: int) -> UserRead:
         user = self._repo.get_by_id(user_id)
