@@ -324,12 +324,9 @@ class _HomeScreenState extends State<HomeScreen> {
       dests.add(const _Dest(Glyph.briefcase, 'Вакансии'));
       tabs.add(const CandidatesScreen());
       dests.add(const _Dest(Glyph.people, 'Кандидаты'));
-      tabs.add(const VacanciesScreen(initialFavorites: true));
-      dests.add(const _Dest(Glyph.star, 'Избранное'));
+      tabs.add(const ApplicationsScreen());
+      dests.add(const _Dest(Glyph.send, 'Отклики'));
       tabs.add(const CompaniesScreen());
-      if (user.isAdmin) {
-        tabs.add(const UsersScreen());
-      }
     }
 
     if (_tab >= tabs.length) _tab = 0;
@@ -360,7 +357,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _dashboard(AppUser user, String greeting, AppScope scope) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Рабочий стол'),
+        title: Text(user.isAdmin
+            ? 'Панель администратора'
+            : user.isManager
+                ? 'Панель менеджера'
+                : 'Мой рабочий стол'),
         actions: [
           GlassIconButton(
             Glyph.settings,
@@ -420,7 +421,8 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text('Обзор', style: Theme.of(context).textTheme.titleLarge),
+            Text(user.canManage ? 'Обзор команды' : 'Мой обзор',
+                style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 7),
             // -------- greeting card
             RealGlassCard(
@@ -530,51 +532,58 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
             const SizedBox(height: 16),
 
-            // -------- navigation (indices match the role tab set above)
-            Text('Быстрый доступ',
+            // Role-focused actions: each role starts with its daily workflow.
+            Text(user.canManage ? 'Рабочие разделы' : 'Мои разделы',
                 style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            _NavCard(
-                glyph: Glyph.kanban,
-                title: user.canManage ? 'Воронка найма' : 'Мои кейсы',
-                subtitle: user.canManage
-                    ? 'Заявки кандидатов по этапам подбора'
-                    : 'Отклики, назначенные лично вам',
-                onTap: () => user.canManage
-                    ? Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => const ApplicationsScreen()))
-                    : _openSection(1)),
-            if (user.canManage)
+            if (user.canManage) ...[
               _NavCard(
-                  glyph: Glyph.star,
-                  title: 'Избранные вакансии',
-                  subtitle: 'Сохранённые позиции для быстрого доступа',
+                  glyph: Glyph.send,
+                  title: 'Отклики',
+                  subtitle: 'Распределение заявок по этапам',
                   onTap: () => _openSection(3)),
-            _NavCard(
-                glyph: Glyph.briefcase,
-                title: 'Вакансии',
-                subtitle: 'Поиск, фильтры, пагинация'
-                    '${user.canManage ? ', создание и правка' : ''}',
-                onTap: () => _openSection(1)),
-            if (user.canManage)
+              _NavCard(
+                  glyph: Glyph.briefcase,
+                  title: 'Вакансии',
+                  subtitle: 'Создавать позиции и управлять публикациями',
+                  onTap: () => _openSection(1)),
               _NavCard(
                   glyph: Glyph.people,
                   title: 'Кандидаты',
                   subtitle:
                       'База соискателей, заметки рекрутеров, история откликов',
                   onTap: () => _openSection(2)),
-            if (user.canManage)
               _NavCard(
                   glyph: Glyph.building,
                   title: 'Компании',
                   subtitle: 'Партнёры и контактные лица',
                   onTap: () => _openSection(4)),
+            ] else ...[
+              _NavCard(
+                  glyph: Glyph.kanban,
+                  title: 'Мои отклики',
+                  subtitle: 'Назначенные вам заявки и их текущий статус',
+                  onTap: () => _openSection(1)),
+              _NavCard(
+                  glyph: Glyph.briefcase,
+                  title: 'Найти вакансию',
+                  subtitle: 'Поиск по городу, формату работы и зарплате',
+                  onTap: () => _openSection(2)),
+            ],
+            _NavCard(
+                glyph: Glyph.star,
+                title: 'Избранное',
+                subtitle: 'Сохранённые вакансии',
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) =>
+                        const VacanciesScreen(initialFavorites: true)))),
             if (user.isAdmin)
               _NavCard(
                   glyph: Glyph.server,
                   title: 'Пользователи',
-                  subtitle: 'Управление учётными записями и ролями (админ)',
-                  onTap: () => _openSection(5)),
+                  subtitle: 'Учётные записи и распределение ролей',
+                  onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const UsersScreen()))),
           ],
         ),
       ),
@@ -599,21 +608,46 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              GlassIcon(glyph, size: 26),
-              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(.14),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: GlassIcon(glyph,
+                        size: 18, color: Theme.of(context).colorScheme.primary),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 9),
               loading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2))
                   : Text(textValue ?? '${value ?? '—'}',
-                      style: Theme.of(context).textTheme.titleLarge),
-              Text(label,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800)),
             ],
           ),
         ),
@@ -636,10 +670,26 @@ class _NavCard extends StatelessWidget {
   Widget build(BuildContext context) => Card(
         margin: const EdgeInsets.symmetric(vertical: 5),
         child: ListTile(
-          leading: GlassIcon(glyph, size: 30),
-          title: Text(title),
-          subtitle: Text(subtitle),
-          trailing: const GlassIcon(Glyph.chevronRight, size: 20),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          leading: Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(.14),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: GlassIcon(glyph,
+                size: 23, color: Theme.of(context).colorScheme.primary),
+          ),
+          title:
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle:
+              Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+          trailing: GlassIcon(Glyph.chevronRight,
+              size: 20,
+              color: Theme.of(context).colorScheme.primary.withOpacity(.8)),
           onTap: onTap,
         ),
       );

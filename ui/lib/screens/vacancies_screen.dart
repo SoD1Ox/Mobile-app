@@ -309,123 +309,144 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
           ),
         ),
       ),
-      floatingActionButton: (user?.canManage ?? false)
-          ? FloatingActionButton.extended(
-              onPressed: () => _openForm(),
-              icon: const GlassIcon(Glyph.add, size: 20),
-              label: const Text('Новая вакансия'),
-            )
-          : null,
-      body: _items.isEmpty && !_loading
-          ? const Center(child: Text('Вакансии не найдены'))
-          : RefreshIndicator(
-              onRefresh: () => _load(reset: true),
-              child: ListView.builder(
-                controller: _scrollController,
-                itemCount: _items.length + (_hasMore ? 1 : 0),
-                itemBuilder: (context, i) {
-                  if (i >= _items.length) {
-                    _load();
-                    return const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  final v = _items[i];
-                  return GlassListCard(
-                    onTap: () async {
-                      final changed = await Navigator.push<bool>(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                VacancyDetailScreen(vacancyId: v.id)),
-                      );
-                      if (changed == true) _load(reset: true);
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(v.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        fontSize: 15.5,
-                                        fontWeight: FontWeight.w700)),
-                              ),
-                              IconButton(
-                                tooltip: _favoriteIds.contains(v.id)
-                                    ? 'Убрать из избранного'
-                                    : 'В избранное',
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () => _toggleFavorite(v),
-                                icon: GlassIcon(
-                                  _favoriteIds.contains(v.id)
-                                      ? Glyph.starFilled
-                                      : Glyph.star,
-                                  size: 20,
-                                  color: _favoriteIds.contains(v.id)
-                                      ? const Color(0xFFFFC857)
-                                      : null,
-                                ),
-                              ),
-                              if (v.remote)
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 8),
-                                  child: StatusChip(
-                                      label: 'Удалённо',
-                                      color: const Color(0xFF5BC8E8)),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 4,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              GlassIcon(Glyph.money, size: 15),
-                              Text(v.salaryLabel,
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary)),
-                              if (v.city != null) ...[
-                                Text(' · ',
-                                    style: TextStyle(
-                                        color: appTextColor(context,
-                                            opacity: 0.6))),
-                                GlassIcon(Glyph.pin, size: 15),
-                                Text(v.city!,
-                                    style: TextStyle(
-                                        color: appTextColor(context,
-                                            opacity: 0.82))),
-                              ],
-                            ],
-                          ),
-                          if (v.skills.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                                v.skills.map((e) => e.name).take(6).join(' · '),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color:
-                                        appTextColor(context, opacity: 0.68))),
-                          ],
-                        ],
-                      ),
-                    ),
-                  );
-                },
+      body: Column(
+        children: [
+          if ((user?.canManage ?? false) && !_showFavorites)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _openForm(),
+                  icon: const GlassIcon(Glyph.add, size: 20),
+                  label: const Text('Новая вакансия'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                    alignment: Alignment.center,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
               ),
             ),
+          Expanded(
+            child: _items.isEmpty && !_loading
+                ? const Center(child: Text('Вакансии не найдены'))
+                : RefreshIndicator(
+                    onRefresh: () => _load(reset: true),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.only(bottom: 100),
+                      itemCount: _items.length + (_hasMore ? 1 : 0),
+                      itemBuilder: (context, i) {
+                        if (i >= _items.length) {
+                          _load();
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+                        final v = _items[i];
+                        return GlassListCard(
+                          onTap: () async {
+                            final changed = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      VacancyDetailScreen(vacancyId: v.id)),
+                            );
+                            if (changed == true) _load(reset: true);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(v.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontSize: 15.5,
+                                              fontWeight: FontWeight.w700)),
+                                    ),
+                                    IconButton(
+                                      tooltip: _favoriteIds.contains(v.id)
+                                          ? 'Убрать из избранного'
+                                          : 'В избранное',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: () => _toggleFavorite(v),
+                                      icon: GlassIcon(
+                                        _favoriteIds.contains(v.id)
+                                            ? Glyph.starFilled
+                                            : Glyph.star,
+                                        size: 20,
+                                        color: _favoriteIds.contains(v.id)
+                                            ? const Color(0xFFFFC857)
+                                            : null,
+                                      ),
+                                    ),
+                                    if (v.remote)
+                                      const Padding(
+                                        padding: EdgeInsets.only(left: 8),
+                                        child: StatusChip(
+                                            label: 'Удалённо',
+                                            color: const Color(0xFF5BC8E8)),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    GlassIcon(Glyph.money, size: 15),
+                                    Text(v.salaryLabel,
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary)),
+                                    if (v.city != null) ...[
+                                      Text(' · ',
+                                          style: TextStyle(
+                                              color: appTextColor(context,
+                                                  opacity: 0.6))),
+                                      GlassIcon(Glyph.pin, size: 15),
+                                      Text(v.city!,
+                                          style: TextStyle(
+                                              color: appTextColor(context,
+                                                  opacity: 0.82))),
+                                    ],
+                                  ],
+                                ),
+                                if (v.skills.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                      v.skills
+                                          .map((e) => e.name)
+                                          .take(6)
+                                          .join(' · '),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: appTextColor(context,
+                                              opacity: 0.68))),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 

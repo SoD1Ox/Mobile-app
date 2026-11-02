@@ -57,18 +57,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      GlassIcon(Glyph.building,
-                          size: 72,
-                          color: Theme.of(context).colorScheme.primary),
-                      const SizedBox(height: 12),
-                      Text('Кадровое агентство',
+                      Text('Добро пожаловать',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.headlineMedium),
-                      const SizedBox(height: 4),
-                      Text('Вход в систему подбора персонала',
+                      const SizedBox(height: 8),
+                      Text('Кадровое агентство · подбор и работа с откликами',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 28),
                       TextFormField(
                         controller: _username,
                         decoration: InputDecoration(

@@ -143,7 +143,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
         title: Text(widget.mineOnly
             ? 'Мои кейсы'
             : widget.vacancyId == null
-                ? 'Воронка найма'
+                ? 'Отклики'
                 : 'Отклики на вакансию'),
         actions: [
           GlassIconButton(Glyph.refresh, tooltip: 'Обновить', onPressed: _load),
