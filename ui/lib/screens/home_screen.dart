@@ -20,6 +20,7 @@ import 'applications_screen.dart';
 import 'candidates_screen.dart';
 import 'companies_screen.dart';
 import 'users_screen.dart';
+import 'settings_screen.dart';
 import 'vacancies_screen.dart';
 
 /// Bottom-nav destination built from custom vector glyphs (no Material Icons).
@@ -68,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
       void Function(int?) apply,
       void Function(bool) setLoading,
       List<Object> failures) async {
+    int? result;
     try {
       final raw = await AppScope.read(context).api.get(path, params);
       final map = raw as Map?;
@@ -76,17 +78,19 @@ class _HomeScreenState extends State<HomeScreen> {
       if (total == null && map != null && map['items'] is List) {
         total = (map['items'] as List).length;
       }
-      if (mounted) {
-        setState(
-            () => apply(total is int ? total : int.tryParse('${total ?? ''}')));
-      }
+      result = total is int ? total : int.tryParse('${total ?? ''}');
     } catch (e) {
       // Leave a visible error on the dashboard instead of silently replacing
       // failed requests with a dash.
       failures.add(e);
-      if (mounted) setState(() => apply(null));
+      result = null;
     } finally {
-      if (mounted) setState(() => setLoading(false));
+      if (mounted) {
+        setState(() {
+          apply(result);
+          setLoading(false);
+        });
+      }
     }
   }
 
@@ -123,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
         (v) => _myCaseCount = v, (b) => _loadingMine = b, failures));
     // Hired tile: a worker's scoped list can legitimately be empty, so for
     // them we count their own cases that reached "hired" via the items array.
-    requests.add(_stat('/applications', {'page_size': 200, 'status': 'hired'},
+    requests.add(_stat('/applications', {'page_size': 1, 'status': 'hired'},
         (v) => _hiredCount = v, (b) => _loadingHired = b, failures));
     if (user.canManage) {
       requests.add(_stat('/candidates', {'page_size': 1},
@@ -320,8 +324,8 @@ class _HomeScreenState extends State<HomeScreen> {
       dests.add(const _Dest(Glyph.briefcase, 'Вакансии'));
       tabs.add(const CandidatesScreen());
       dests.add(const _Dest(Glyph.people, 'Кандидаты'));
-      tabs.add(const ApplicationsScreen());
-      dests.add(const _Dest(Glyph.kanban, 'Воронка'));
+      tabs.add(const VacanciesScreen(initialFavorites: true));
+      dests.add(const _Dest(Glyph.star, 'Избранное'));
       tabs.add(const CompaniesScreen());
       if (user.isAdmin) {
         tabs.add(const UsersScreen());
@@ -356,8 +360,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _dashboard(AppUser user, String greeting, AppScope scope) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Кадровое агентство'),
+        title: const Text('Рабочий стол'),
         actions: [
+          GlassIconButton(
+            Glyph.settings,
+            tooltip: 'Настройки',
+            onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          ),
           ListenableBuilder(
             listenable: scope.notifications,
             builder: (context, _) => Stack(
@@ -410,8 +420,11 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // -------- greeting card (real glass: one BackdropFilter)
+            Text('Обзор', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 7),
+            // -------- greeting card
             RealGlassCard(
+              margin: EdgeInsets.zero,
               child: Row(
                 children: [
                   CircleAvatar(
@@ -518,15 +531,25 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
 
             // -------- navigation (indices match the role tab set above)
-            Text('Разделы', style: Theme.of(context).textTheme.titleMedium),
+            Text('Быстрый доступ',
+                style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             _NavCard(
                 glyph: Glyph.kanban,
                 title: user.canManage ? 'Воронка найма' : 'Мои кейсы',
                 subtitle: user.canManage
-                    ? 'Kanban-доска: перетаскивание карточек между этапами'
+                    ? 'Заявки кандидатов по этапам подбора'
                     : 'Отклики, назначенные лично вам',
-                onTap: () => _openSection(user.canManage ? 3 : 1)),
+                onTap: () => user.canManage
+                    ? Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => const ApplicationsScreen()))
+                    : _openSection(1)),
+            if (user.canManage)
+              _NavCard(
+                  glyph: Glyph.star,
+                  title: 'Избранные вакансии',
+                  subtitle: 'Сохранённые позиции для быстрого доступа',
+                  onTap: () => _openSection(3)),
             _NavCard(
                 glyph: Glyph.briefcase,
                 title: 'Вакансии',

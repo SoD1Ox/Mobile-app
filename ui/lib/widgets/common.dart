@@ -215,14 +215,6 @@ Widget _glassDecorated(BuildContext context,
               ? const Color(0x553ED9B8)
               : const Color(0x55749B90),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(
-                Theme.of(context).brightness == Brightness.dark ? 0.16 : 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Material(
         type: MaterialType.transparency,

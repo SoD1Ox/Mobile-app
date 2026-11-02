@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      GlassIcon(Glyph.folder,
+                      GlassIcon(Glyph.building,
                           size: 72,
                           color: Theme.of(context).colorScheme.primary),
                       const SizedBox(height: 12),

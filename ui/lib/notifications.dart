@@ -37,11 +37,13 @@ class NotificationStore extends ChangeNotifier {
 
   final List<AppNotification> _items = [];
   int _unread = 0;
+  bool _enabled = true;
   String? _loadedUser;
   String _lastUser = '';
 
   List<AppNotification> get items => List.unmodifiable(_items);
   int get unreadCount => _unread;
+  bool get enabled => _enabled;
 
   Future<void> loadFor(String username) async {
     if (_loadedUser == username) return;
@@ -51,6 +53,7 @@ class NotificationStore extends ChangeNotifier {
     _unread = 0;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
+    _enabled = prefs.getBool('notifications_enabled_$username') ?? true;
     final raw = prefs.getString('notifications_$username');
     if (_lastUser != username) return;
     if (raw != null) {
@@ -70,8 +73,17 @@ class NotificationStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setEnabled(bool value) async {
+    _enabled = value;
+    notifyListeners();
+    if (_lastUser.isNotEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('notifications_enabled_$_lastUser', value);
+    }
+  }
+
   void add(String title, String body) {
-    if (_lastUser.isEmpty) return;
+    if (_lastUser.isEmpty || !_enabled) return;
     _items.insert(0, AppNotification(title: title, body: body));
     if (_items.length > _maxItems) _items.removeRange(_maxItems, _items.length);
     _unread++;

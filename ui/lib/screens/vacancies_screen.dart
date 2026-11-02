@@ -14,7 +14,8 @@ import 'vacancy_detail_screen.dart';
 import 'vacancy_form_screen.dart';
 
 class VacanciesScreen extends StatefulWidget {
-  const VacanciesScreen({super.key});
+  final bool initialFavorites;
+  const VacanciesScreen({super.key, this.initialFavorites = false});
 
   @override
   State<VacanciesScreen> createState() => _VacanciesScreenState();
@@ -44,6 +45,7 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
   @override
   void initState() {
     super.initState();
+    _showFavorites = widget.initialFavorites;
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadFavorites());
   }
@@ -178,7 +180,7 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
         _showFavorites;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Вакансии'),
+        title: Text(_showFavorites ? 'Избранное' : 'Вакансии'),
         actions: [
           PopupMenuButton<String>(
             tooltip: 'Сортировка',

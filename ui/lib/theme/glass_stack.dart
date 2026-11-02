@@ -184,47 +184,10 @@ class _OverlayHost extends StatelessWidget {
   }
 }
 
-/// Deep-blue aurora: gradient + soft glow blobs.  `const` decorations →
-/// zero rebuild cost.
+/// Subtle gradient background. Large blurred shadow blobs caused heavy GPU
+/// work on mobile, so the backdrop stays flat and inexpensive there.
 class _AuroraBackground extends StatelessWidget {
   const _AuroraBackground();
-
-  static const List<BoxShadow> _glow = [
-    BoxShadow(
-        color: Color(0x3D3ED9B8),
-        blurRadius: 140,
-        spreadRadius: 40,
-        offset: Offset(-120, -80)),
-    BoxShadow(
-        color: Color(0x2EFF8A66),
-        blurRadius: 160,
-        spreadRadius: 30,
-        offset: Offset(160, 220)),
-    BoxShadow(
-        color: Color(0x226FE3C4),
-        blurRadius: 120,
-        spreadRadius: 20,
-        offset: Offset(0, -260)),
-  ];
-
-  // Light mint variant: soft daylight gradient + pastel glow blobs.
-  static const List<BoxShadow> _glowLight = [
-    BoxShadow(
-        color: Color(0x597BE8CB),
-        blurRadius: 140,
-        spreadRadius: 40,
-        offset: Offset(-120, -80)),
-    BoxShadow(
-        color: Color(0x40FFB49A),
-        blurRadius: 160,
-        spreadRadius: 30,
-        offset: Offset(160, 220)),
-    BoxShadow(
-        color: Color(0x339DEDDA),
-        blurRadius: 120,
-        spreadRadius: 20,
-        offset: Offset(0, -260)),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -239,21 +202,6 @@ class _AuroraBackground extends StatelessWidget {
               : const [Color(0xFFF2FAF7), Color(0xFFE2F3EC), Color(0xFFEFF8F4)],
           stops: const [0.0, 0.55, 1.0],
         ),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: IgnorePointer(
-              child: Container(
-                width: 1,
-                height: 1,
-                alignment: Alignment.topLeft,
-                decoration:
-                    BoxDecoration(boxShadow: isDark ? _glow : _glowLight),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -295,13 +243,15 @@ class RealGlassCard extends StatelessWidget {
         border: Border.all(
           color: isDark ? const Color(0x553ED9B8) : const Color(0x55749B90),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.16 : 0.08),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        boxShadow: _useLiveBackdropBlur
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.16 : 0.08),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ]
+            : const [],
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -345,13 +295,15 @@ class GlassPanel extends StatelessWidget {
         border: Border.all(
           color: isDark ? const Color(0x553ED9B8) : const Color(0x55749B90),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.18 : 0.08),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: _useLiveBackdropBlur
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.18 : 0.08),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : const [],
       ),
       child: child,
     );

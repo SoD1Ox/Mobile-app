@@ -4,6 +4,8 @@
 /// scales crisply at any size and keeps the app free of the icon font.
 library;
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 enum Glyph {
@@ -48,6 +50,7 @@ enum Glyph {
   list,
   chart, // analytics bars (conversion funnel)
   note, // recruiter comment bubble
+  settings,
 }
 
 class GlassIcon extends StatelessWidget {
@@ -357,6 +360,17 @@ class _GlyphPainter extends CustomPainter {
           p.quadraticBezierTo(3.5, 20, 3.5, 18);
           p.close();
         });
+      case Glyph.settings:
+        for (var i = 0; i < 8; i++) {
+          final angle = i * pi / 4;
+          final inner =
+              Offset(12 + 7.2 * math.cos(angle), 12 + 7.2 * math.sin(angle));
+          final outer =
+              Offset(12 + 10 * math.cos(angle), 12 + 10 * math.sin(angle));
+          _line(canvas, stroke, inner, outer);
+        }
+        canvas.drawCircle(const Offset(12, 12), 7, stroke);
+        canvas.drawCircle(const Offset(12, 12), 2.7, stroke);
       case Glyph.building:
         _path(canvas, stroke, (p) {
           p.addRRect(RRect.fromRectAndRadius(

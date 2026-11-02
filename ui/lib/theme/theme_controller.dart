@@ -31,13 +31,22 @@ class ThemeController extends ValueNotifier<ThemeMode> {
 
   /// Cycles dark -> light -> dark (simple, discoverable toggle).
   void toggle() {
-    value = value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-    _persist();
+    setMode(value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark);
+  }
+
+  Future<void> setMode(ThemeMode mode) async {
+    value = mode;
+    await _persist();
   }
 
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        _key, value == ThemeMode.light ? 'light' : 'dark');
+        _key,
+        switch (value) {
+          ThemeMode.light => 'light',
+          ThemeMode.system => 'system',
+          ThemeMode.dark => 'dark',
+        });
   }
 }
