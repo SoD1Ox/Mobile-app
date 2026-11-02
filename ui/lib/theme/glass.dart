@@ -1,11 +1,10 @@
 /// Glassmorphism (жидкое стекло) design system.
 ///
 /// Performance notes:
-///  * Live blur (BackdropFilter) is used only for the persistent bottom nav;
-///    everything else fakes frosted glass with translucent gradients — one
-///    cheap paint op instead of a per-frame gaussian pass.
+///  * Scrolling cards never use a live blur. Android, iOS and web use tinted
+///    glass surfaces throughout; desktop keeps a small number of bounded blurs.
 ///  * The background gradient lives in MaterialApp.builder, so it is painted
-///    exactly once per screen and never re-renders on setState.
+///    independently from the scrolling page content.
 ///  * Cards/chips/fields are themed globally (see buildGlassTheme), so every
 ///    existing widget inherits the glass look without structural changes.
 library;
@@ -44,12 +43,17 @@ ThemeData buildGlassTheme({Brightness brightness = Brightness.dark}) {
   final scheme = ColorScheme.fromSeed(
     seedColor: _accent,
     brightness: brightness,
-  ).copyWith(surface: isDark ? const Color(0xFF0F2925) : const Color(0xFFEFF7F4));
+  ).copyWith(
+      surface: isDark ? const Color(0xFF0F2925) : const Color(0xFFEFF7F4));
 
   OutlineInputBorder fieldBorder({bool focused = false}) => OutlineInputBorder(
         borderRadius: kGlassRadius,
         borderSide: BorderSide(
-          color: focused ? _accent.withOpacity(0.9) : _glassBorder,
+          color: focused
+              ? _accent.withOpacity(0.9)
+              : isDark
+                  ? _glassBorder
+                  : const Color(0x55749B90),
           width: focused ? 1.4 : 1,
         ),
       );
@@ -57,9 +61,7 @@ ThemeData buildGlassTheme({Brightness brightness = Brightness.dark}) {
   // Foreground/text colors follow the brightness so the light mint-glass
   // variant stays readable everywhere.
   final fg = isDark ? Colors.white : const Color(0xFF0C2A24);
-  final subtle = isDark
-      ? const Color(0xCCD9E6E1)
-      : const Color(0xB3163A33);
+  final subtle = isDark ? const Color(0xCCD9E6E1) : const Color(0xB3163A33);
 
   var theme = ThemeData(
     useMaterial3: true,
@@ -67,9 +69,8 @@ ThemeData buildGlassTheme({Brightness brightness = Brightness.dark}) {
     colorScheme: scheme,
     scaffoldBackgroundColor: Colors.transparent,
     canvasColor: Colors.transparent,
-    dialogBackgroundColor: isDark
-        ? const Color(0xF210302B)
-        : const Color(0xF2F5FBF8),
+    dialogBackgroundColor:
+        isDark ? const Color(0xF210302B) : const Color(0xF2F5FBF8),
     visualDensity: VisualDensity.adaptivePlatformDensity,
     // cardTheme / dialogTheme intentionally NOT passed to the constructor:
     // their parameter type was renamed CardTheme->CardThemeData and
@@ -94,17 +95,16 @@ ThemeData buildGlassTheme({Brightness brightness = Brightness.dark}) {
       textColor: fg,
     ),
     dividerTheme: DividerThemeData(
-      color: _glassBorder,
+      color: isDark ? _glassBorder : const Color(0x33749B90),
       thickness: 1,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: _glassFill,
+      fillColor: isDark ? const Color(0x321C3530) : const Color(0xDFFFFFFF),
       hintStyle: TextStyle(color: subtle.withOpacity(0.6)),
       labelStyle: TextStyle(color: subtle),
       floatingLabelStyle: const TextStyle(color: _accent),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       enabledBorder: fieldBorder(),
       focusedBorder: fieldBorder(focused: true),
       errorBorder: OutlineInputBorder(
@@ -128,42 +128,39 @@ ThemeData buildGlassTheme({Brightness brightness = Brightness.dark}) {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: _accent,
-        foregroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0B2E28),
         minimumSize: const Size(64, 48),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: fg,
         side: const BorderSide(color: _glassBorder),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(foregroundColor: _accent),
+      style: TextButton.styleFrom(foregroundColor: scheme.primary),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: _accent,
-      foregroundColor: Colors.white,
+      foregroundColor: const Color(0xFF0B2E28),
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: _glassFill,
-      selectedColor: _accent.withOpacity(0.35),
-      side: const BorderSide(color: _glassBorder),
+      backgroundColor: isDark ? _glassFill : const Color(0xDFFFFFFF),
+      selectedColor: scheme.primary.withOpacity(isDark ? 0.32 : 0.14),
+      side: BorderSide(color: isDark ? _glassBorder : const Color(0x55749B90)),
       labelStyle: TextStyle(color: fg, fontSize: 12.5),
       secondaryLabelStyle: TextStyle(color: fg, fontSize: 12.5),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      backgroundColor: isDark
-          ? const Color(0xE610302B)
-          : const Color(0xE6E4F1EC),
+      backgroundColor:
+          isDark ? const Color(0xE610302B) : const Color(0xE6E4F1EC),
       contentTextStyle: TextStyle(color: fg),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
@@ -179,9 +176,7 @@ ThemeData buildGlassTheme({Brightness brightness = Brightness.dark}) {
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w700
               : FontWeight.w500,
-          color: states.contains(WidgetState.selected)
-              ? fg
-              : subtle,
+          color: states.contains(WidgetState.selected) ? fg : subtle,
         ),
       ),
       iconTheme: WidgetStateProperty.resolveWith(
@@ -190,9 +185,10 @@ ThemeData buildGlassTheme({Brightness brightness = Brightness.dark}) {
         ),
       ),
     ),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(
-      color: _accent,
-      linearTrackColor: Color(0x33FFFFFF),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: scheme.primary,
+      linearTrackColor:
+          isDark ? const Color(0x33FFFFFF) : const Color(0x33749B90),
     ),
     textTheme: const TextTheme(
       headlineMedium: TextStyle(fontWeight: FontWeight.w700),
@@ -217,12 +213,18 @@ ThemeData _applyGlassCard(ThemeData base) {
   if (ct == null) return base;
   // copyWith exists on both CardTheme (old) and CardThemeData (new).
   final dynamic copied = (ct as dynamic).copyWith(
-    color: _glassFill,
+    color: base.brightness == Brightness.dark
+        ? const Color(0xE61B3833)
+        : const Color(0xF7FFFFFF),
     elevation: 0.0,
     margin: EdgeInsets.zero,
     shape: RoundedRectangleBorder(
       borderRadius: kGlassRadius,
-      side: BorderSide(color: _glassBorder),
+      side: BorderSide(
+        color: base.brightness == Brightness.dark
+            ? const Color(0x553ED9B8)
+            : const Color(0x55749B90),
+      ),
     ),
   );
   return (base as dynamic).copyWith(cardTheme: copied) as ThemeData;
@@ -233,15 +235,16 @@ ThemeData _applyGlassDialog(ThemeData base, {required bool isDark}) {
   if (dt == null) return base;
   final fg = isDark ? Colors.white : const Color(0xFF0C2A24);
   final dynamic copied = (dt as dynamic).copyWith(
-    backgroundColor:
-        isDark ? const Color(0xF210302B) : const Color(0xF2F5FBF8),
+    backgroundColor: isDark ? const Color(0xF210302B) : const Color(0xF2F5FBF8),
     surfaceTintColor: Colors.transparent,
     shape: RoundedRectangleBorder(
       borderRadius: const BorderRadius.all(Radius.circular(22)),
-      side: BorderSide(color: _glassBorder),
+      side: BorderSide(
+        color: isDark ? _glassBorder : const Color(0x55749B90),
+      ),
     ),
-    titleTextStyle: TextStyle(
-        color: fg, fontSize: 19, fontWeight: FontWeight.w700),
+    titleTextStyle:
+        TextStyle(color: fg, fontSize: 19, fontWeight: FontWeight.w700),
     contentTextStyle: TextStyle(color: fg.withOpacity(0.85), fontSize: 14.5),
   );
   return (base as dynamic).copyWith(dialogTheme: copied) as ThemeData;

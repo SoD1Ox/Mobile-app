@@ -109,60 +109,70 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
     final nameCtl = TextEditingController();
     final emailCtl = TextEditingController();
     final phoneCtl = TextEditingController();
-    final submitted = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Откликнуться на вакансию'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: nameCtl,
-                decoration:
-                    const InputDecoration(labelText: 'ФИО кандидата *')),
-            const SizedBox(height: 10),
-            TextField(
-                controller: emailCtl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'E-mail')),
-            const SizedBox(height: 10),
-            TextField(
-                controller: phoneCtl,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Телефон')),
+    try {
+      final submitted = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Откликнуться на вакансию'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: nameCtl,
+                  decoration:
+                      const InputDecoration(labelText: 'ФИО кандидата *')),
+              const SizedBox(height: 10),
+              TextField(
+                  controller: emailCtl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'E-mail')),
+              const SizedBox(height: 10),
+              TextField(
+                  controller: phoneCtl,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(labelText: 'Телефон')),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Отмена')),
+            FilledButton(
+                onPressed: () {
+                  if (nameCtl.text.trim().length < 2) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                        content: Text('Укажите ФИО (минимум 2 символа)')));
+                    return;
+                  }
+                  Navigator.pop(ctx, true);
+                },
+                child: const Text('Отправить')),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Отмена')),
-          FilledButton(
-              onPressed: () {
-                if (nameCtl.text.trim().length < 2) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-                      content: Text('Укажите ФИО (минимум 2 символа)')));
-                  return;
-                }
-                Navigator.pop(ctx, true);
-              },
-              child: const Text('Отправить')),
-        ],
-      ),
-    );
-    if (submitted != true || !mounted) return;
-    final api = AppScope.read(context).api;
-    final ok = await runGuarded(context, () async {
-      await api.post('/applications', {
-        'vacancy_id': widget.vacancyId,
-        'full_name': nameCtl.text.trim(),
-        if (emailCtl.text.trim().isNotEmpty) 'email': emailCtl.text.trim(),
-        if (phoneCtl.text.trim().isNotEmpty) 'phone': phoneCtl.text.trim(),
+      );
+      if (submitted != true || !mounted) return;
+      final api = AppScope.read(context).api;
+      final ok = await runGuarded(context, () async {
+        await api.post('/applications', {
+          'vacancy_id': widget.vacancyId,
+          'full_name': nameCtl.text.trim(),
+          if (emailCtl.text.trim().isNotEmpty) 'email': emailCtl.text.trim(),
+          if (phoneCtl.text.trim().isNotEmpty) 'phone': phoneCtl.text.trim(),
+        });
       });
-    });
-    if (ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Отклик отправлен — кандидат добавлен в воронку')));
-      _load();
+      if (ok && mounted) {
+        AppScope.read(context).notifications.add(
+              'Новый отклик',
+              '${nameCtl.text.trim()} откликнулся на «${_vacancy?['title'] ?? 'вакансию'}».',
+            );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Отклик отправлен — кандидат добавлен в воронку')));
+        _load();
+      }
+    } finally {
+      nameCtl.dispose();
+      emailCtl.dispose();
+      phoneCtl.dispose();
     }
   }
 
@@ -263,12 +273,14 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
                       ? v['description']
                       : 'Описание пока не заполнено.',
                   style: TextStyle(
-                      height: 1.45, color: Colors.white.withOpacity(0.85)),
+                      height: 1.45,
+                      color: appTextColor(context, opacity: 0.88)),
                 ),
                 const SizedBox(height: 10),
                 Text('Обновлена: ${_fmtDate(item.updatedAt)}',
                     style: TextStyle(
-                        fontSize: 12, color: Colors.white.withOpacity(0.5))),
+                        fontSize: 12,
+                        color: appTextColor(context, opacity: 0.68))),
               ],
             ),
           ),
@@ -351,7 +363,7 @@ class _VacancyDetailScreenState extends State<VacancyDetailScreen> {
           Text(text,
               style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: color ?? Colors.white.withOpacity(0.8))),
+                  color: color ?? appTextColor(context, opacity: 0.85))),
         ],
       );
 

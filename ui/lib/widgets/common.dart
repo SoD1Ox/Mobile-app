@@ -2,14 +2,16 @@
 /// in one visual style (glass Material 3, same paddings, same error handling).
 library;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui show ImageFilter;
 
 import '../app_state.dart';
 import '../theme/glass.dart' show kGlassRadius;
 import '../models/models.dart';
 import 'glass_icons.dart';
+
+/// Theme-aware foreground color for secondary labels and helper text.
+Color appTextColor(BuildContext context, {double opacity = 1}) =>
+    Theme.of(context).colorScheme.onSurface.withOpacity(opacity);
 
 /// Standard form text field with validation message shown inline.
 class AppTextField extends StatelessWidget {
@@ -43,8 +45,9 @@ class AppTextField extends StatelessWidget {
           obscureText: obscureText,
           maxLines: obscureText ? 1 : maxLines,
           keyboardType: keyboardType,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(labelText: label, hintText: hint, suffixIcon: suffix),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+          decoration: InputDecoration(
+              labelText: label, hintText: hint, suffixIcon: suffix),
         ),
       );
 }
@@ -73,9 +76,9 @@ class AppDropdown<T> extends StatelessWidget {
           value: value,
           isExpanded: true,
           decoration: InputDecoration(labelText: label),
-          dropdownColor: const Color(0xF210302B),
-          style: const TextStyle(color: Colors.white),
-          menuMaxHeight: 360,
+          dropdownColor: Theme.of(context).colorScheme.surface,
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+          menuMaxHeight: 320,
           items: items,
           onChanged: onChanged,
           validator: validator,
@@ -100,7 +103,9 @@ class StatusChip extends StatelessWidget {
         ),
         child: Text(label,
             style: TextStyle(
-                color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 12,
+                fontWeight: FontWeight.w600)),
       );
 }
 
@@ -125,9 +130,11 @@ Future<bool> confirmDialog(BuildContext context, String title, String text,
       content: Text(text),
       actions: [
         TextButton(
-            onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена')),
         FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFF16A6A)),
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFF16A6A)),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(okLabel)),
       ],
@@ -160,12 +167,8 @@ class LoadingView extends StatelessWidget {
       const Center(child: CircularProgressIndicator());
 }
 
-/// Frosted-glass list card.  On native platforms it is REAL glass: one
-/// BackdropFilter gaussian blur behind a translucent gradient + hairline
-/// border.  On web (CanvasKit) live blur inside long scrolling lists costs a
-/// full-surface re-rasterization per frame, so there we keep the identical
-/// cheap gradient-frost paint instead — visually indistinguishable over the
-/// static aurora backdrop.
+/// Frosted-glass list card. It uses a tinted gradient and a defined outline,
+/// never a live blur, so scrolling stays smooth on mid-range phones.
 class GlassListCard extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -176,44 +179,48 @@ class GlassListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inner = _glassDecorated(
-        child: child, onTap: onTap, onLongPress: onLongPress);
-    if (kIsWeb) return inner;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      child: ClipRRect(
-        borderRadius: kGlassRadius,
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-          child: inner,
-        ),
+      child: _glassDecorated(
+        context,
+        child: child,
+        onTap: onTap,
+        onLongPress: onLongPress,
       ),
     );
   }
 }
 
 /// Shared frosted decoration used by [GlassListCard] (and web fallback).
-Widget _glassDecorated(
+Widget _glassDecorated(BuildContext context,
         {required Widget child,
         VoidCallback? onTap,
         VoidCallback? onLongPress}) =>
     DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: kGlassRadius,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(0.13),
-            Colors.white.withOpacity(0.05),
-          ],
+        gradient: Theme.of(context).brightness == Brightness.dark
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xE61B3B35), Color(0xDF132E2A)],
+              )
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFCFFFFFF), Color(0xF0EAF4EF)],
+              ),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0x553ED9B8)
+              : const Color(0x55749B90),
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.18),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(
+                Theme.of(context).brightness == Brightness.dark ? 0.16 : 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -235,7 +242,10 @@ class PagerBar extends StatelessWidget {
   final ValueChanged<int> onChanged;
 
   const PagerBar(
-      {super.key, required this.page, required this.pages, required this.onChanged});
+      {super.key,
+      required this.page,
+      required this.pages,
+      required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -248,7 +258,11 @@ class PagerBar extends StatelessWidget {
           GlassIconButton(Glyph.chevronLeft,
               onPressed: page > 1 ? () => onChanged(page - 1) : null),
           Text('Стр. $page из $pages',
-              style: const TextStyle(color: Colors.white70)),
+              style: TextStyle(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withOpacity(0.72))),
           GlassIconButton(Glyph.chevronRight,
               onPressed: page < pages ? () => onChanged(page + 1) : null),
         ],
@@ -287,7 +301,9 @@ class FunnelBars extends StatelessWidget {
                         curve: Curves.easeOutCubic,
                         builder: (context, f, _) => Stack(
                           children: [
-                            Container(height: 18, color: Colors.white.withOpacity(0.06)),
+                            Container(
+                                height: 18,
+                                color: Colors.white.withOpacity(0.06)),
                             FractionallySizedBox(
                               widthFactor: f.clamp(0.03, 1.0),
                               child: Container(

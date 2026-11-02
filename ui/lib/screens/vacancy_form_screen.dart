@@ -80,10 +80,11 @@ class _VacancyFormScreenState extends State<VacancyFormScreen> {
       if (!mounted) return;
       setState(() {
         _companies = DataPage.fromJson(
-            results[0] is Map<String, dynamic>
-                ? results[0] as Map<String, dynamic>
-                : <String, dynamic>{},
-            CompanyItem.fromJson).items;
+                results[0] is Map<String, dynamic>
+                    ? results[0] as Map<String, dynamic>
+                    : <String, dynamic>{},
+                CompanyItem.fromJson)
+            .items;
         _skills = (results[1] is List ? results[1] as List : const [])
             .whereType<Map>()
             .map((e) => SkillItem.fromJson(Map<String, dynamic>.from(e)))
@@ -103,7 +104,8 @@ class _VacancyFormScreenState extends State<VacancyFormScreen> {
     if (name.isEmpty) return;
     final api = AppScope.read(context).api;
     try {
-      final created = await api.post('/skills', {'name': name}) as Map<String, dynamic>;
+      final created =
+          await api.post('/skills', {'name': name}) as Map<String, dynamic>;
       final skill = SkillItem.fromJson(created);
       if (!mounted) return;
       setState(() {
@@ -131,7 +133,8 @@ class _VacancyFormScreenState extends State<VacancyFormScreen> {
     }
     final body = <String, dynamic>{
       'title': _title.text.trim(),
-      'description': _description.text.trim().isEmpty ? null : _description.text.trim(),
+      'description':
+          _description.text.trim().isEmpty ? null : _description.text.trim(),
       'salary_from': sf,
       'salary_to': st,
       'city': _city.text.trim().isEmpty ? null : _city.text.trim(),
@@ -148,6 +151,10 @@ class _VacancyFormScreenState extends State<VacancyFormScreen> {
         await api.post('/vacancies', body);
       }
       if (!mounted) return;
+      AppScope.read(context).notifications.add(
+            _isEdit ? 'Вакансия обновлена' : 'Создана новая вакансия',
+            _title.text.trim(),
+          );
       showInfo(context, _isEdit ? 'Вакансия обновлена' : 'Вакансия создана');
       Navigator.pop(context, true);
     } catch (e) {
@@ -159,7 +166,8 @@ class _VacancyFormScreenState extends State<VacancyFormScreen> {
 
   String? _validateNum(String? v, String label) {
     if (v == null || v.trim().isEmpty) return null;
-    if (double.tryParse(v.trim()) == null) return '$label — число, например 120000';
+    if (double.tryParse(v.trim()) == null)
+      return '$label — число, например 120000';
     return null;
   }
 
@@ -167,7 +175,8 @@ class _VacancyFormScreenState extends State<VacancyFormScreen> {
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: LoadingView());
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'Редактирование вакансии' : 'Новая вакансия')),
+      appBar: AppBar(
+          title: Text(_isEdit ? 'Редактирование вакансии' : 'Новая вакансия')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -176,8 +185,9 @@ class _VacancyFormScreenState extends State<VacancyFormScreen> {
             AppTextField(
               controller: _title,
               label: 'Название должности *',
-              validator: (v) =>
-                  (v == null || v.trim().length < 2) ? 'Минимум 2 символа' : null,
+              validator: (v) => (v == null || v.trim().length < 2)
+                  ? 'Минимум 2 символа'
+                  : null,
             ),
             AppDropdown<int>(
               label: 'Компания-работодатель *',

@@ -55,18 +55,27 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
         if (a.candidateName != null) names[a.candidateId] = a.candidateName!;
         if (a.vacancyTitle != null) titles[a.vacancyId] = a.vacancyTitle!;
       }
-      final missingCand =
-          page.items.map((e) => e.candidateId).toSet().where((i) => !names.containsKey(i)).toList();
-      final missingVac =
-          page.items.map((e) => e.vacancyId).toSet().where((i) => !titles.containsKey(i)).toList();
+      final missingCand = page.items
+          .map((e) => e.candidateId)
+          .toSet()
+          .where((i) => !names.containsKey(i))
+          .toList();
+      final missingVac = page.items
+          .map((e) => e.vacancyId)
+          .toSet()
+          .where((i) => !titles.containsKey(i))
+          .toList();
       if (missingCand.isNotEmpty) {
         try {
           final res = await api.get('/candidates',
               {'ids': missingCand.join(','), 'page_size': missingCand.length});
-          final items = (res is Map && res['items'] is List) ? res['items'] as List : const [];
+          final items = (res is Map && res['items'] is List)
+              ? res['items'] as List
+              : const [];
           for (final e in items.whereType<Map>()) {
             final m = Map<String, dynamic>.from(e);
-            names[(m['id'] as num?)?.toInt() ?? 0] = m['full_name'] as String? ?? '—';
+            names[(m['id'] as num?)?.toInt() ?? 0] =
+                m['full_name'] as String? ?? '—';
           }
         } catch (_) {/* leave unknown */}
       }
@@ -74,10 +83,13 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
         try {
           final res = await api.get('/vacancies',
               {'ids': missingVac.join(','), 'page_size': missingVac.length});
-          final items = (res is Map && res['items'] is List) ? res['items'] as List : const [];
+          final items = (res is Map && res['items'] is List)
+              ? res['items'] as List
+              : const [];
           for (final e in items.whereType<Map>()) {
             final m = Map<String, dynamic>.from(e);
-            titles[(m['id'] as num?)?.toInt() ?? 0] = m['title'] as String? ?? '—';
+            titles[(m['id'] as num?)?.toInt() ?? 0] =
+                m['title'] as String? ?? '—';
           }
         } catch (_) {}
       }
@@ -109,6 +121,10 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
           .patch('/applications/${app.id}', {'status': toStatus});
     });
     if (ok && mounted) {
+      AppScope.read(context).notifications.add(
+            'Этап отклика изменён',
+            '${_candidateNames[app.candidateId] ?? 'Кандидат'} · ${app.vacancyTitle ?? 'Вакансия'} · ${ApplicationItem.statusLabels[toStatus]}',
+          );
       showInfo(context,
           '${_candidateNames[app.candidateId] ?? 'Кандидат'} → «${ApplicationItem.statusLabels[toStatus]}»');
       _load();
@@ -143,7 +159,8 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                       : (cons.maxWidth - 32) / _columns.length;
                   return SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -170,7 +187,10 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
           child: Row(
             children: [
               Container(
-                  width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                      color: color, borderRadius: BorderRadius.circular(3))),
               const SizedBox(width: 6),
               Expanded(
                 child: Text('${ApplicationItem.statusLabels[statusKey]}',
@@ -178,30 +198,29 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
-              Text('${cards.length}', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+              Text('${cards.length}',
+                  style: TextStyle(color: appTextColor(context, opacity: 0.7))),
             ],
           ),
         ),
         Expanded(
-          child: ListView(
+          child: ListView.builder(
             padding: const EdgeInsets.only(bottom: 80),
-            children: [
-              for (final a in cards)
-                if (!canDrag)
-                  _card(a)
-                else
-                  Draggable<int>(
-                    data: a.id,
-                    feedback: Material(
-                      color: Colors.transparent,
-                      child: SizedBox(
-                          width: width - 16, child: _card(a, preview: true)),
-                    ),
-                    childWhenDragging:
-                        Opacity(opacity: 0.35, child: _card(a)),
-                    child: _card(a),
-                  ),
-            ],
+            itemCount: cards.length,
+            itemBuilder: (context, index) {
+              final app = cards[index];
+              if (!canDrag) return _card(app);
+              return Draggable<int>(
+                data: app.id,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: SizedBox(
+                      width: width - 16, child: _card(app, preview: true)),
+                ),
+                childWhenDragging: Opacity(opacity: 0.35, child: _card(app)),
+                child: _card(app),
+              );
+            },
           ),
         ),
       ],
@@ -239,7 +258,8 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
             : () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => CandidateDetailScreen(candidateId: a.candidateId)),
+                      builder: (_) =>
+                          CandidateDetailScreen(candidateId: a.candidateId)),
                 ),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -252,14 +272,16 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                     radius: 14,
                     backgroundColor: kAccentColor.withOpacity(0.3),
                     child: Text(name.characters.first.toUpperCase(),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w700)),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
                   ),
                 ],
               ),
@@ -273,7 +295,8 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: 12, color: Colors.white.withOpacity(0.65))),
+                            fontSize: 12,
+                            color: appTextColor(context, opacity: 0.72))),
                   ),
                 ],
               ),
@@ -283,10 +306,10 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                   Expanded(
                     child: Text(_fmtDate(a.createdAt),
                         style: TextStyle(
-                            fontSize: 11, color: Colors.white.withOpacity(0.4))),
+                            fontSize: 11,
+                            color: appTextColor(context, opacity: 0.62))),
                   ),
-                  if (a.completionScore != null &&
-                      a.completionScore! > 0) ...[
+                  if (a.completionScore != null && a.completionScore! > 0) ...[
                     const GlassIcon(Glyph.chart, size: 13),
                     const SizedBox(width: 4),
                     Text('${(a.completionScore! * 100).round()}%',
@@ -327,14 +350,15 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                 const SizedBox(height: 4),
                 Text(a.vacancyTitle ?? '',
                     style: TextStyle(
-                        fontSize: 12, color: Colors.white.withOpacity(0.6))),
+                        fontSize: 12,
+                        color: appTextColor(context, opacity: 0.72))),
                 const SizedBox(height: 12),
                 if (tl.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text('Перемещений статуса ещё не было.',
                         style: TextStyle(
-                            color: Colors.white.withOpacity(0.55))),
+                            color: appTextColor(context, opacity: 0.7))),
                   )
                 else
                   Flexible(
@@ -347,7 +371,7 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.circle,
+                            GlassIcon(Glyph.dot,
                                 size: 10, color: kAccentColor.withOpacity(0.9)),
                             const SizedBox(width: 8),
                             Expanded(
@@ -362,8 +386,8 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                                     Text(stamp,
                                         style: TextStyle(
                                             fontSize: 11,
-                                            color:
-                                                Colors.white.withOpacity(0.45))),
+                                            color: appTextColor(context,
+                                                opacity: 0.62))),
                                 ],
                               ),
                             ),

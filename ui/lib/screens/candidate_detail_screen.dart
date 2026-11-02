@@ -48,8 +48,8 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
           as Map<String, dynamic>;
       final commentsRaw =
           await api.get('/candidates/${widget.candidateId}/comments');
-      final appsRaw =
-          await api.get('/applications', {'candidate_id': c['id'], 'page_size': 100});
+      final appsRaw = await api
+          .get('/applications', {'candidate_id': c['id'], 'page_size': 100});
       final apps = DataPage.fromJson(
         appsRaw is Map<String, dynamic>
             ? appsRaw
@@ -70,7 +70,8 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
       setState(() {
         _candidate = CandidateItem.fromJson(c);
         _comments = ((commentsRaw as List?) ?? [])
-            .map((e) => CommentItem.fromJson(Map<String, dynamic>.from(e as Map)))
+            .map((e) =>
+                CommentItem.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList();
         _applications = apps;
         _vacancyTitles = titles;
@@ -111,14 +112,12 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
   }
 
   Future<void> _delete() async {
-    final ok = await confirmDialog(
-        context,
-        'Удалить кандидата?',
+    final ok = await confirmDialog(context, 'Удалить кандидата?',
         'Карточка «${_candidate!.fullName}», её комментарии и отклики будут удалены.');
     if (!ok) return;
     final api = AppScope.read(context).api;
-    final done =
-        await runGuarded(context, () => api.delete('/candidates/${widget.candidateId}'));
+    final done = await runGuarded(
+        context, () => api.delete('/candidates/${widget.candidateId}'));
     if (done && mounted) Navigator.pop(context, true);
   }
 
@@ -130,7 +129,8 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
       appBar: AppBar(
         title: Text(c.fullName, overflow: TextOverflow.ellipsis),
         actions: [
-          GlassIconButton(Glyph.edit, onPressed: _edit, tooltip: 'Редактировать'),
+          GlassIconButton(Glyph.edit,
+              onPressed: _edit, tooltip: 'Редактировать'),
           GlassIconButton(Glyph.delete, onPressed: _delete, tooltip: 'Удалить'),
           const SizedBox(width: 4),
         ],
@@ -144,12 +144,13 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(c.fullName,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 6),
                 Text(
                   '${c.specialization ?? 'Без специализации'} · ${c.expLabel}'
                   '${c.city != null ? ' · ${c.city}' : ''}',
-                  style: TextStyle(color: Colors.white.withOpacity(0.75)),
+                  style: TextStyle(color: appTextColor(context, opacity: 0.82)),
                 ),
                 const SizedBox(height: 12),
                 _row(Glyph.mail, c.email ?? 'Email не указан'),
@@ -169,7 +170,8 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
                 const SizedBox(height: 8),
                 if (_applications.isEmpty)
                   Text('Кандидат ещё не откликался на вакансии.',
-                      style: TextStyle(color: Colors.white.withOpacity(0.6))),
+                      style: TextStyle(
+                          color: appTextColor(context, opacity: 0.72))),
                 for (final a in _applications)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 5),
@@ -177,7 +179,8 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            _vacancyTitles[a.vacancyId] ?? 'Вакансия #${a.vacancyId}',
+                            _vacancyTitles[a.vacancyId] ??
+                                'Вакансия #${a.vacancyId}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -200,7 +203,8 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
                 const SizedBox(height: 8),
                 if (_comments.isEmpty)
                   Text('Пока нет заметок по кандидату.',
-                      style: TextStyle(color: Colors.white.withOpacity(0.6))),
+                      style: TextStyle(
+                          color: appTextColor(context, opacity: 0.72))),
                 for (final cm in _comments)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
@@ -213,7 +217,7 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
                           '${cm.authorName ?? 'Рекрутер'} · ${_fmtDate(cm.createdAt)}',
                           style: TextStyle(
                               fontSize: 11.5,
-                              color: Colors.white.withOpacity(0.45)),
+                              color: appTextColor(context, opacity: 0.62)),
                         ),
                       ],
                     ),
@@ -226,7 +230,7 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
                         controller: _commentController,
                         minLines: 1,
                         maxLines: 3,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: appTextColor(context)),
                         decoration: const InputDecoration(
                           hintText: 'Добавить заметку…',
                         ),
@@ -258,7 +262,8 @@ class _CandidateDetailScreenState extends State<CandidateDetailScreen> {
             const SizedBox(width: 8),
             Expanded(
                 child: Text(text,
-                    style: TextStyle(color: Colors.white.withOpacity(0.85)))),
+                    style: TextStyle(
+                        color: appTextColor(context, opacity: 0.86)))),
           ],
         ),
       );

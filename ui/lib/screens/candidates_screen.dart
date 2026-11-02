@@ -88,7 +88,8 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
   Future<void> _openForm({CandidateItem? existing}) async {
     final changed = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => CandidateFormScreen(existing: existing)),
+      MaterialPageRoute(
+          builder: (_) => CandidateFormScreen(existing: existing)),
     );
     if (changed == true) _load(reset: true);
   }
@@ -96,7 +97,8 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
   @override
   Widget build(BuildContext context) {
     final user = AppScope.read(context).user;
-    final hasFilters = _search.isNotEmpty || _city != null || _specialization != null;
+    final hasFilters =
+        _search.isNotEmpty || _city != null || _specialization != null;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Кандидаты'),
@@ -109,19 +111,17 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                 child: TextField(
                   controller: _searchController,
                   textInputAction: TextInputAction.search,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: appTextColor(context)),
                   decoration: InputDecoration(
                     hintText: 'Поиск по имени / специализации…',
                     prefixIcon: const GlassIcon(Glyph.search, size: 20),
                     suffixIcon: _search.isEmpty
                         ? null
-                        : GlassIconButton(Glyph.close,
-                            size: 18,
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _search = '');
-                              _load(reset: true);
-                            }),
+                        : GlassIconButton(Glyph.close, size: 18, onPressed: () {
+                            _searchController.clear();
+                            setState(() => _search = '');
+                            _load(reset: true);
+                          }),
                   ),
                   onSubmitted: (v) {
                     setState(() => _search = v.trim());
@@ -131,7 +131,8 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
               ),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
                     FilterChip(
@@ -217,7 +218,8 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                       final changed = await Navigator.push<bool>(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => CandidateDetailScreen(candidateId: c.id)),
+                            builder: (_) =>
+                                CandidateDetailScreen(candidateId: c.id)),
                       );
                       if (changed == true) _load(reset: true);
                     },
@@ -230,7 +232,8 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                             backgroundColor: kAccentColor.withOpacity(0.25),
                             child: Text(
                                 c.fullName.characters.first.toUpperCase(),
-                                style: const TextStyle(fontWeight: FontWeight.w700)),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700)),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -241,7 +244,8 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                        fontSize: 15.5, fontWeight: FontWeight.w700)),
+                                        fontSize: 15.5,
+                                        fontWeight: FontWeight.w700)),
                                 const SizedBox(height: 4),
                                 Text(
                                   [
@@ -253,7 +257,8 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                       fontSize: 12.5,
-                                      color: Colors.white.withOpacity(0.65)),
+                                      color:
+                                          appTextColor(context, opacity: 0.72)),
                                 ),
                               ],
                             ),
@@ -278,10 +283,10 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
         children: [
           for (final value in values)
             SimpleDialogOption(
-                onPressed: () => Navigator.pop(ctx, value),
-                child: Text(value)),
+                onPressed: () => Navigator.pop(ctx, value), child: Text(value)),
           SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, ''), child: const Text('Все')),
+              onPressed: () => Navigator.pop(ctx, ''),
+              child: const Text('Все')),
         ],
       ),
     );

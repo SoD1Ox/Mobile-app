@@ -8,7 +8,9 @@ import 'package:flutter/material.dart';
 
 enum Glyph {
   add,
+  bell,
   briefcase, // vacancy / position
+  check,
   kanban, // hiring pipeline board
   money, // salary (ruble banknote)
   back,
@@ -17,6 +19,7 @@ enum Glyph {
   chevronRight,
   close,
   delete,
+  dot,
   edit,
   eye,
   eyeOff,
@@ -89,6 +92,27 @@ class _GlyphPainter extends CustomPainter {
       case Glyph.add:
         _line(canvas, stroke, Offset(12, 5), Offset(12, 19));
         _line(canvas, stroke, Offset(5, 12), Offset(19, 12));
+      case Glyph.bell:
+        _path(canvas, stroke, (p) {
+          p.moveTo(6, 16.5);
+          p.lineTo(7.3, 15);
+          p.lineTo(7.3, 10.8);
+          p.quadraticBezierTo(7.3, 5.8, 12, 5.8);
+          p.quadraticBezierTo(16.7, 5.8, 16.7, 10.8);
+          p.lineTo(16.7, 15);
+          p.lineTo(18, 16.5);
+          p.close();
+        });
+        _line(canvas, stroke, const Offset(9.5, 19), const Offset(14.5, 19));
+        canvas.drawCircle(const Offset(12, 20), 1.1, fill);
+      case Glyph.check:
+        _path(canvas, stroke, (p) {
+          p.moveTo(5, 12.5);
+          p.lineTo(9.5, 17);
+          p.lineTo(19.5, 7);
+        });
+      case Glyph.dot:
+        canvas.drawCircle(const Offset(12, 12), 3.8, fill);
       case Glyph.plusCircle:
         canvas.drawCircle(const Offset(12, 12), 8.2, stroke);
         _line(canvas, stroke, const Offset(12, 8.6), const Offset(12, 15.4));
@@ -577,9 +601,9 @@ class GlassIconButton extends StatelessWidget {
     final btn = InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(7),
-        child: GlassIcon(glyph, size: size, color: color),
+      child: SizedBox.square(
+        dimension: 44,
+        child: Center(child: GlassIcon(glyph, size: size, color: color)),
       ),
     );
     return tooltip == null ? btn : Tooltip(message: tooltip!, child: btn);

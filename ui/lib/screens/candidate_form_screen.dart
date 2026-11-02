@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../models/models.dart';
 import '../widgets/common.dart';
+import '../widgets/glass_icons.dart';
 
 class CandidateFormScreen extends StatefulWidget {
   final CandidateItem? existing; // null => create
@@ -67,10 +68,12 @@ class _CandidateFormScreenState extends State<CandidateFormScreen> {
       'email': _email.text.trim().isEmpty ? null : _email.text.trim(),
       'phone': _phone.text.trim().isEmpty ? null : _phone.text.trim(),
       'city': _city.text.trim().isEmpty ? null : _city.text.trim(),
-      'specialization':
-          _specialization.text.trim().isEmpty ? null : _specialization.text.trim(),
+      'specialization': _specialization.text.trim().isEmpty
+          ? null
+          : _specialization.text.trim(),
       'experience_years': int.tryParse(_experience.text.trim()) ?? 0,
-      'resume_url': _resumeUrl.text.trim().isEmpty ? null : _resumeUrl.text.trim(),
+      'resume_url':
+          _resumeUrl.text.trim().isEmpty ? null : _resumeUrl.text.trim(),
     };
     final api = AppScope.read(context).api;
     setState(() => _saving = true);
@@ -81,6 +84,10 @@ class _CandidateFormScreenState extends State<CandidateFormScreen> {
         await api.post('/candidates', body);
       }
       if (!mounted) return;
+      AppScope.read(context).notifications.add(
+            _isEdit ? 'Карточка кандидата обновлена' : 'Добавлен кандидат',
+            _fullName.text.trim(),
+          );
       showInfo(context, _isEdit ? 'Карточка обновлена' : 'Кандидат добавлен');
       Navigator.pop(context, true);
     } catch (e) {
@@ -105,7 +112,8 @@ class _CandidateFormScreenState extends State<CandidateFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'Редактирование кандидата' : 'Новый кандидат')),
+      appBar: AppBar(
+          title: Text(_isEdit ? 'Редактирование кандидата' : 'Новый кандидат')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -114,8 +122,9 @@ class _CandidateFormScreenState extends State<CandidateFormScreen> {
             AppTextField(
               controller: _fullName,
               label: 'ФИО *',
-              validator: (v) =>
-                  (v == null || v.trim().length < 2) ? 'Минимум 2 символа' : null,
+              validator: (v) => (v == null || v.trim().length < 2)
+                  ? 'Минимум 2 символа'
+                  : null,
             ),
             AppTextField(
               controller: _specialization,
@@ -132,12 +141,15 @@ class _CandidateFormScreenState extends State<CandidateFormScreen> {
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) return null;
                       final n = int.tryParse(v.trim());
-                      return (n == null || n < 0 || n > 70) ? 'От 0 до 70' : null;
+                      return (n == null || n < 0 || n > 70)
+                          ? 'От 0 до 70'
+                          : null;
                     },
                   ),
                 ),
                 const SizedBox(width: 10),
-                Expanded(child: AppTextField(controller: _city, label: 'Город')),
+                Expanded(
+                    child: AppTextField(controller: _city, label: 'Город')),
               ],
             ),
             AppTextField(
@@ -165,8 +177,9 @@ class _CandidateFormScreenState extends State<CandidateFormScreen> {
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.check, size: 18),
-              label: Text(_isEdit ? 'Сохранить изменения' : 'Добавить кандидата'),
+                  : const GlassIcon(Glyph.check, size: 18),
+              label:
+                  Text(_isEdit ? 'Сохранить изменения' : 'Добавить кандидата'),
             ),
           ],
         ),

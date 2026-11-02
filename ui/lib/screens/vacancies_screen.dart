@@ -142,6 +142,10 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
         'favorite_vacancies_${user.id}',
         (_favoriteIds.toList()..sort()).map((id) => '$id').toList(),
       );
+      AppScope.read(context).notifications.add(
+            wasSaved ? 'Убрано из избранного' : 'Вакансия сохранена',
+            '«${vacancy.title}» ${wasSaved ? 'удалена из списка сохранённых' : 'добавлена в избранное'}.',
+          );
       if (_showFavorites) await _load(reset: true);
     } catch (e) {
       if (!mounted) return;
@@ -211,7 +215,7 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                 child: TextField(
                   controller: _searchController,
                   textInputAction: TextInputAction.search,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: appTextColor(context)),
                   decoration: InputDecoration(
                     hintText: 'Поиск по названию / описанию…',
                     prefixIcon: const GlassIcon(Glyph.search, size: 20),
@@ -384,17 +388,21 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                             children: [
                               GlassIcon(Glyph.money, size: 15),
                               Text(v.salaryLabel,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF3ED9B8))),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary)),
                               if (v.city != null) ...[
                                 Text(' · ',
                                     style: TextStyle(
-                                        color: Colors.white.withOpacity(0.4))),
+                                        color: appTextColor(context,
+                                            opacity: 0.6))),
                                 GlassIcon(Glyph.pin, size: 15),
                                 Text(v.city!,
                                     style: TextStyle(
-                                        color: Colors.white.withOpacity(0.75))),
+                                        color: appTextColor(context,
+                                            opacity: 0.82))),
                               ],
                             ],
                           ),
@@ -406,7 +414,8 @@ class _VacanciesScreenState extends State<VacanciesScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.white.withOpacity(0.55))),
+                                    color:
+                                        appTextColor(context, opacity: 0.68))),
                           ],
                         ],
                       ),

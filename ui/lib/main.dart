@@ -97,14 +97,10 @@ class _StaffingAgencyAppState extends State<StaffingAgencyApp> {
         themeMode: mode,
         theme: buildGlassTheme(brightness: Brightness.light),
         darkTheme: buildGlassTheme(brightness: Brightness.dark),
-        home: ListenableBuilder(
-          listenable: _notifications,
-          builder: (_, __) =>
-              _user == null ? const LoginScreen() : const HomeScreen(),
-        ),
+        home: _user == null ? const LoginScreen() : const HomeScreen(),
         // One app-wide backdrop: aurora gradient at the bottom, page tree in
-        // the middle, a single live-blur frosted overlay strip on top that the
-        // current screen fills via FrostedHeader. Painted once per frame —
+        // the middle, a frosted overlay strip on top that the current screen
+        // fills via FrostedHeader. Mobile uses a flat tinted surface for speed.
         // screens never re-wrap the background themselves.
         // Keep app state above the Navigator. Routes opened with push() are
         // siblings of `home`, so a provider nested inside `home` is invisible

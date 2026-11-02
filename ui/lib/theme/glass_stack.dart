@@ -8,11 +8,8 @@
 ///    rendered into that overlay OUTSIDE the scrolling content — rows visually
 ///    slide under real gaussian blur while it costs exactly ONE BackdropFilter
 ///    per screen (never per list row).
-///  * [RealGlassCard] = real BackdropFilter for detail screens / hero cards
-///    (bounded count — safe even on web CanvasKit).
-///  * [GlassListCard] (widgets/common.dart) stays gradient-frosted for long
-///    scrolling lists: N live blurs would kill FPS; over a static backdrop it
-///    is visually identical to real blur.
+///  * [RealGlassCard] uses a bounded live blur on desktop and a tinted surface
+///    on mobile; long lists always use the cheaper tinted treatment.
 library;
 
 import 'dart:ui';
@@ -25,6 +22,13 @@ const Color kAccent = Color(0xFF3ED9B8); // mint
 const Color kCoral = Color(0xFFFF8A66); // warm coral
 const Color kGlassBorder = Color(0x33FFFFFF);
 const BorderRadius kGlassRadius = BorderRadius.all(Radius.circular(18));
+
+/// Gaussian backdrop filters are expensive on phones, especially while a list
+/// scrolls. Keep the live effect for desktop, and use tinted surfaces on mobile.
+bool get _useLiveBackdropBlur =>
+    !kIsWeb &&
+    defaultTargetPlatform != TargetPlatform.android &&
+    defaultTargetPlatform != TargetPlatform.iOS;
 
 class _GlassPanelData {
   final Object key;
@@ -138,6 +142,28 @@ class _OverlayHost extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final header = Container(
+      height: top + data.height,
+      padding: EdgeInsets.only(top: top),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? const Color(0x553ED9B8) : const Color(0x55749B90),
+          ),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: _useLiveBackdropBlur
+              ? const [Color(0x16FFFFFF), Color(0x08FFFFFF)]
+              : isDark
+                  ? const [Color(0xF51B3732), Color(0xF2132E2A)]
+                  : const [Color(0xF8F7FCF9), Color(0xF1EAF4EF)],
+        ),
+      ),
+      child: Builder(builder: data.builder),
+    );
     return Stack(
       children: [
         Positioned(
@@ -145,25 +171,12 @@ class _OverlayHost extends StatelessWidget {
           right: 0,
           top: 0,
           child: ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-              child: Container(
-                height: top + data.height,
-                padding: EdgeInsets.only(top: top),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: kGlassBorder)),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.white.withOpacity(0.10),
-                      Colors.white.withOpacity(0.04),
-                    ],
-                  ),
-                ),
-                child: Builder(builder: data.builder),
-              ),
-            ),
+            child: _useLiveBackdropBlur
+                ? BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                    child: header,
+                  )
+                : header,
           ),
         ),
       ],
@@ -265,44 +278,51 @@ class RealGlassCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: margin,
-        child: ClipRRect(
-          borderRadius: kGlassRadius,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: kGlassRadius,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withOpacity(0.14),
-                    Colors.white.withOpacity(0.05),
-                  ],
-                ),
-                border: Border.all(color: Colors.white.withOpacity(0.22)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.18),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Material(
-                type: MaterialType.transparency,
-                child: InkWell(
-                  onTap: onTap,
-                  borderRadius: kGlassRadius,
-                  child: Padding(padding: padding, child: child),
-                ),
-              ),
-            ),
-          ),
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: kGlassRadius,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: _useLiveBackdropBlur
+              ? const [Color(0x32FFFFFF), Color(0x14FFFFFF)]
+              : isDark
+                  ? const [Color(0xE61B3B35), Color(0xDF132E2A)]
+                  : const [Color(0xFCFFFFFF), Color(0xF0EAF4EF)],
         ),
-      );
+        border: Border.all(
+          color: isDark ? const Color(0x553ED9B8) : const Color(0x55749B90),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.16 : 0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: kGlassRadius,
+          child: Padding(padding: padding, child: child),
+        ),
+      ),
+    );
+    final card = _useLiveBackdropBlur
+        ? ClipRRect(
+            borderRadius: kGlassRadius,
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+              child: surface,
+            ),
+          )
+        : surface;
+    return Padding(padding: margin, child: card);
+  }
 }
 
 /// Persistent bottom-nav glass (kept from the original design system).
@@ -313,18 +333,35 @@ class GlassPanel extends StatelessWidget {
   const GlassPanel({super.key, required this.child, this.blur = 18});
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .surface
+            .withOpacity(_useLiveBackdropBlur ? 0.78 : 0.97),
         borderRadius: BorderRadius.circular(22),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.07),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: kGlassBorder),
-            ),
-            child: child,
-          ),
+        border: Border.all(
+          color: isDark ? const Color(0x553ED9B8) : const Color(0x55749B90),
         ),
-      );
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.18 : 0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: child,
+    );
+    if (!_useLiveBackdropBlur) return surface;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+        child: surface,
+      ),
+    );
+  }
 }

@@ -78,7 +78,7 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
             child: TextField(
               controller: _searchController,
               textInputAction: TextInputAction.search,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: appTextColor(context)),
               decoration: InputDecoration(
                 hintText: 'Поиск по названию… ($_total)',
                 prefixIcon: const GlassIcon(Glyph.search, size: 20),
@@ -156,7 +156,8 @@ class _CompaniesScreenState extends State<CompaniesScreen> {
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                           fontSize: 12.5,
-                                          color: Colors.white.withOpacity(0.6)),
+                                          color: appTextColor(context,
+                                              opacity: 0.72)),
                                     ),
                                   ],
                                 ),
@@ -356,7 +357,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
                                 if (_contacts.isEmpty)
                                   Text('Контакты не добавлены',
                                       style: TextStyle(
-                                          color: Colors.white.withOpacity(0.5)))
+                                          color: appTextColor(context,
+                                              opacity: 0.68)))
                                 else
                                   for (final ct in _contacts)
                                     Padding(
@@ -395,8 +397,9 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
                                                     ].join(' · '),
                                                     style: TextStyle(
                                                         fontSize: 12,
-                                                        color: Colors.white
-                                                            .withOpacity(0.6)),
+                                                        color: appTextColor(
+                                                            context,
+                                                            opacity: 0.72)),
                                                   ),
                                               ],
                                             ),
@@ -441,7 +444,8 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
             const SizedBox(width: 8),
             Expanded(
                 child: Text(text,
-                    style: TextStyle(color: Colors.white.withOpacity(0.85)))),
+                    style: TextStyle(
+                        color: appTextColor(context, opacity: 0.85)))),
           ],
         ),
       );

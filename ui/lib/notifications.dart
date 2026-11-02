@@ -25,8 +25,7 @@ class AppNotification {
   Map<String, dynamic> toJson() =>
       {'title': title, 'body': body, 'at': at.toIso8601String()};
 
-  factory AppNotification.fromJson(Map<String, dynamic> j) =>
-      AppNotification(
+  factory AppNotification.fromJson(Map<String, dynamic> j) => AppNotification(
         title: j['title'] as String? ?? '',
         body: j['body'] as String? ?? '',
         at: DateTime.tryParse(j['at'] as String? ?? '') ?? DateTime.now(),
@@ -38,16 +37,22 @@ class NotificationStore extends ChangeNotifier {
 
   final List<AppNotification> _items = [];
   int _unread = 0;
-  bool _loaded = false;
+  String? _loadedUser;
+  String _lastUser = '';
 
   List<AppNotification> get items => List.unmodifiable(_items);
   int get unreadCount => _unread;
 
   Future<void> loadFor(String username) async {
-    if (_loaded) return;
-    _loaded = true;
+    if (_loadedUser == username) return;
+    _lastUser = username;
+    _loadedUser = username;
+    _items.clear();
+    _unread = 0;
+    notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('notifications_$username');
+    if (_lastUser != username) return;
     if (raw != null) {
       try {
         final list = (jsonDecode(raw) as List)
@@ -66,6 +71,7 @@ class NotificationStore extends ChangeNotifier {
   }
 
   void add(String title, String body) {
+    if (_lastUser.isEmpty) return;
     _items.insert(0, AppNotification(title: title, body: body));
     if (_items.length > _maxItems) _items.removeRange(_maxItems, _items.length);
     _unread++;
@@ -75,11 +81,14 @@ class NotificationStore extends ChangeNotifier {
 
   void markAllSeen() {
     if (_unread == 0) return;
+    final username = _lastUser;
     _unread = 0;
     notifyListeners();
-    SharedPreferences.getInstance().then(
-        (prefs) => prefs.setInt('notifications_seen_${_lastUser}',
-            DateTime.now().millisecondsSinceEpoch));
+    if (username.isNotEmpty) {
+      SharedPreferences.getInstance().then((prefs) => prefs.setInt(
+          'notifications_seen_$username',
+          DateTime.now().millisecondsSinceEpoch));
+    }
   }
 
   void clear() {
@@ -89,14 +98,14 @@ class NotificationStore extends ChangeNotifier {
     _persist();
   }
 
-  String _lastUser = '';
-
   /// Remembers the active user for persistence keys.
   set currentUser(String v) => _lastUser = v;
 
   Future<void> _persist() async {
+    final username = _lastUser;
+    if (username.isEmpty) return;
+    final encoded = jsonEncode(_items.map((e) => e.toJson()).toList());
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        'notifications_$_lastUser', jsonEncode(_items.map((e) => e.toJson()).toList()));
+    await prefs.setString('notifications_$username', encoded);
   }
 }

@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../models/models.dart';
+import '../notifications.dart';
 import '../theme/glass.dart';
 import '../theme/glass_stack.dart';
 import '../widgets/common.dart';
@@ -52,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Currently selected bottom-navigation tab.
   int _tab = 0;
+  final Set<int> _visitedTabs = {0};
 
   @override
   void initState() {
@@ -135,7 +137,154 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openSection(int index) => setState(() => _tab = index);
+  void _openSection(int index) => setState(() {
+        _tab = index;
+        _visitedTabs.add(index);
+      });
+
+  Future<void> _showNotifications(NotificationStore notifications) async {
+    notifications.markAllSeen();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        child: GlassPanel(
+          child: SizedBox(
+            height: MediaQuery.of(sheetContext).size.height * 0.68,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+              child: ListenableBuilder(
+                listenable: notifications,
+                builder: (context, _) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const GlassIcon(Glyph.bell, size: 21),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Text('Уведомления',
+                              style: Theme.of(context).textTheme.titleLarge),
+                        ),
+                        if (notifications.items.isNotEmpty)
+                          TextButton(
+                            onPressed: notifications.clear,
+                            child: const Text('Очистить'),
+                          ),
+                        GlassIconButton(
+                          Glyph.close,
+                          tooltip: 'Закрыть',
+                          onPressed: () => Navigator.pop(sheetContext),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 16),
+                    Expanded(
+                      child: notifications.items.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GlassIcon(
+                                    Glyph.bell,
+                                    size: 34,
+                                    color: appTextColor(context, opacity: 0.5),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text('Пока тихо',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Здесь появятся важные события и изменения.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        color: appTextColor(context,
+                                            opacity: 0.68)),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: notifications.items.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 7),
+                              itemBuilder: (context, index) {
+                                final item = notifications.items[index];
+                                return GlassListCard(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Padding(
+                                          padding: EdgeInsets.only(top: 2),
+                                          child: GlassIcon(Glyph.dot,
+                                              size: 12, color: kAccentColor),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(item.title,
+                                                  style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w700)),
+                                              const SizedBox(height: 3),
+                                              Text(item.body,
+                                                  style: TextStyle(
+                                                      color: appTextColor(
+                                                          context,
+                                                          opacity: 0.78))),
+                                              const SizedBox(height: 5),
+                                              Text(_notificationTime(item.at),
+                                                  style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: appTextColor(
+                                                          context,
+                                                          opacity: 0.58))),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _notificationTime(DateTime at) {
+    final elapsed = DateTime.now().difference(at);
+    if (elapsed.inMinutes < 1) return 'Только что';
+    if (elapsed.inHours < 1) return '${elapsed.inMinutes} мин. назад';
+    final local = at.toLocal();
+    final time =
+        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    final now = DateTime.now();
+    if (local.year == now.year &&
+        local.month == now.month &&
+        local.day == now.day) {
+      return 'Сегодня, $time';
+    }
+    return '${local.day.toString().padLeft(2, '0')}.${local.month.toString().padLeft(2, '0')} · $time';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -174,10 +323,8 @@ class _HomeScreenState extends State<HomeScreen> {
       tabs.add(const ApplicationsScreen());
       dests.add(const _Dest(Glyph.kanban, 'Воронка'));
       tabs.add(const CompaniesScreen());
-      dests.add(const _Dest(Glyph.building, 'Компании'));
       if (user.isAdmin) {
         tabs.add(const UsersScreen());
-        dests.add(const _Dest(Glyph.server, 'Люди'));
       }
     }
 
@@ -185,13 +332,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       extendBody: true, // let content scroll under the glass nav bar
-      body: IndexedStack(index: _tab, children: tabs),
+      body: IndexedStack(
+        index: _tab,
+        children: [
+          for (var i = 0; i < tabs.length; i++)
+            _visitedTabs.contains(i) ? tabs[i] : const SizedBox.shrink(),
+        ],
+      ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
         child: GlassPanel(
           child: _GlassNavBar(
-            index: _tab,
-            onTap: (i) => setState(() => _tab = i),
+            index: _tab < dests.length ? _tab : 0,
+            onTap: _openSection,
             destinations: dests,
           ),
         ),
@@ -205,6 +358,43 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Кадровое агентство'),
         actions: [
+          ListenableBuilder(
+            listenable: scope.notifications,
+            builder: (context, _) => Stack(
+              clipBehavior: Clip.none,
+              children: [
+                GlassIconButton(
+                  Glyph.bell,
+                  tooltip: 'Уведомления',
+                  onPressed: () => _showNotifications(scope.notifications),
+                ),
+                if (scope.notifications.unreadCount > 0)
+                  Positioned(
+                    top: 1,
+                    right: 1,
+                    child: Container(
+                      constraints:
+                          const BoxConstraints(minWidth: 16, minHeight: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: kCoralColor,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        scope.notifications.unreadCount > 99
+                            ? '99+'
+                            : '${scope.notifications.unreadCount}',
+                        style: const TextStyle(
+                            color: Color(0xFF17332D),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           GlassIconButton(Glyph.logout, tooltip: 'Выйти', onPressed: () async {
             final yes = await confirmDialog(
                 context, 'Выйти?', 'Сессия будет завершена.',
@@ -236,11 +426,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('$greeting, ${user.fullName}!',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.titleLarge),
                         const SizedBox(height: 4),
                         Text('@${user.username} · ${user.email}',
                             style: TextStyle(
-                                color: Colors.white.withOpacity(0.7))),
+                                color: appTextColor(context, opacity: 0.78))),
                         const SizedBox(height: 6),
                         StatusChip(
                             label: user.roleLabel,
@@ -458,14 +650,26 @@ class _GlassNavBar extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       gradient: i == index
-                          ? const LinearGradient(
-                              colors: [Color(0x593ED9B8), Color(0x263ED9B8)],
+                          ? LinearGradient(
+                              colors: [
+                                  Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.2),
+                                  Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withOpacity(0.08),
+                                ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight)
                           : null,
                       border: Border.all(
                           color: i == index
-                              ? const Color(0x663ED9B8)
+                              ? Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withOpacity(0.48)
                               : Colors.transparent),
                     ),
                     child: Column(
@@ -474,7 +678,7 @@ class _GlassNavBar extends StatelessWidget {
                         GlassIcon(destinations[i].icon,
                             size: 21,
                             color: i == index
-                                ? kAccentColor
+                                ? Theme.of(context).colorScheme.primary
                                 : Theme.of(context)
                                     .textTheme
                                     .bodyMedium!
@@ -490,7 +694,7 @@ class _GlassNavBar extends StatelessWidget {
                                     ? FontWeight.w700
                                     : FontWeight.w500,
                                 color: i == index
-                                    ? kAccentColor
+                                    ? Theme.of(context).colorScheme.primary
                                     : Theme.of(context)
                                         .textTheme
                                         .bodyMedium!
